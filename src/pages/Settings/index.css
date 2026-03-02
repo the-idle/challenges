@@ -1,0 +1,27 @@
+/* 当弹窗打开时禁止背景滚动 */
+.ant-modal-open {
+  overflow: hidden !important;
+}
+
+/* 弹窗内容区域样式 */
+.ant-modal-body {
+  padding: 24px;
+}
+
+/* 弹窗标题样式 */
+.ant-modal-title {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* 弹窗表单样式 */
+.ant-form-item-label {
+  font-weight: 500;
+}
+
+/* 弹窗底部按钮样式 */
+.ant-modal-footer {
+  padding: 16px 24px;
+  text-align: right;
+  border-top: 1px solid #f0f0f0;
+}

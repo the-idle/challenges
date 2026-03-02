@@ -1,0 +1,203 @@
+.dashboard-card {
+  background-color: #f7f7f7;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+}
+
+.stat-card {
+  background-color: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.event-timeline-item {
+  display: flex;
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.event-status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  border: 2px solid #fff;
+}
+
+.event-status-bar {
+  width: 100%;
+  height: 2px;
+  margin: 0 8px;
+  background-color: #e0e0e0;
+}
+
+.event-card {
+  background-color: #f5f5f5 !important;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.event-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.custom-timeline-container {
+  background-color: #f8f9fa;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.ant-card-body {
+  padding: 16px !important;
+}
+
+.ant-card-head-title {
+  color: #34495E;
+  font-weight: 600;
+}
+
+.ant-statistic-content-value {
+  font-family: Arial, sans-serif !important;
+  font-weight: 600;
+}
+
+.ant-statistic-title {
+  color: #7F8C8D;
+  font-family: Arial, sans-serif !important;
+}
+
+/* 添加设备事件详情弹框样式 */
+.event-detail-modal .ant-modal-content {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.event-detail-container {
+  background: #fff;
+}
+
+.event-detail-header {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.event-detail-header.normal {
+  border-bottom-color: rgba(82, 196, 26, 0.2);
+}
+
+.event-detail-header.warning {
+  border-bottom-color: rgba(250, 173, 20, 0.2);
+}
+
+.event-detail-header.error {
+  border-bottom-color: rgba(255, 77, 79, 0.2);
+}
+
+.event-device {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.device-id {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.device-status {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.device-status.normal {
+  background-color: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.2);
+}
+
+.device-status.warning {
+  background-color: rgba(250, 173, 20, 0.1);
+  color: #faad14;
+  border: 1px solid rgba(250, 173, 20, 0.2);
+}
+
+.device-status.error {
+  background-color: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+  border: 1px solid rgba(255, 77, 79, 0.2);
+}
+
+.event-detail-content {
+  padding: 20px;
+}
+
+.detail-row {
+  display: flex;
+  margin-bottom: 16px;
+  line-height: 24px;
+}
+
+.detail-label {
+  width: 80px;
+  color: #666;
+  font-weight: 500;
+}
+
+.detail-value {
+  flex: 1;
+  color: #333;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.status-tag.normal {
+  background-color: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.2);
+}
+
+.status-tag.warning {
+  background-color: rgba(250, 173, 20, 0.1);
+  color: #faad14;
+  border: 1px solid rgba(250, 173, 20, 0.2);
+}
+
+.status-tag.error {
+  background-color: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+  border: 1px solid rgba(255, 77, 79, 0.2);
+}
+
+.close-button {
+  color: #666;
+}
+
+.action-buttons {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-start;
+}

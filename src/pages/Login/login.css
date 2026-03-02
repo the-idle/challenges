@@ -1,0 +1,33 @@
+/* 移除输入框聚焦时的样式 */
+.no-focus-effect.ant-input:focus,
+.no-focus-effect.ant-input-focused,
+.no-focus-effect .ant-input:focus,
+.no-focus-effect .ant-input-focused,
+.no-focus-effect.ant-input-affix-wrapper:focus,
+.no-focus-effect.ant-input-affix-wrapper-focused {
+  box-shadow: none !important;
+  border-color: #d9d9d9 !important;
+  outline: none !important;
+}
+
+/* 移除输入框hover时的样式 */
+.no-focus-effect.ant-input:hover,
+.no-focus-effect .ant-input:hover,
+.no-focus-effect.ant-input-affix-wrapper:hover {
+  border-color: #d9d9d9 !important;
+}
+
+/* 确保密码输入框也应用相同样式 */
+.no-focus-effect.ant-input-password:focus,
+.no-focus-effect.ant-input-password-focused,
+.no-focus-effect.ant-input-password:hover {
+  box-shadow: none !important;
+  border-color: #d9d9d9 !important;
+  outline: none !important;
+}
+
+/* 自定义输入框样式 */
+.login-form .ant-input-affix-wrapper,
+.login-form .ant-input {
+  border-radius: 8px;
+}
