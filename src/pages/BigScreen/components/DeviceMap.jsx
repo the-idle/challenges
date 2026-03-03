@@ -182,7 +182,7 @@ const DeviceMap = () => {
     <div className="time-series-container" style={{ height: '100%', position: 'relative' }}>
       <div className="chart-header">
         <div className="chart-title">
-          <GlobalOutlined style={{ marginRight: '8px', fontSize: '18px', color: '#4fc3f7' }} />
+          <GlobalOutlined style={{ marginRight: '8px', fontSize: '18px', color: 'var(--primary-color)' }} />
           柔性智能分拣系统模型
         </div>
       </div>

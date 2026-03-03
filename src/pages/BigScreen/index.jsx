@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Modal } from 'antd';
+import { Modal, ConfigProvider, theme } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import './styles.css';
 import * as XLSX from 'xlsx';
@@ -72,6 +72,7 @@ const normalizeAlertToDevice = (alert) => {
 };
 
 const BigScreen = ({ visible, onClose }) => {
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [timeRange, setTimeRange] = useState('1h');
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [deviceDetailVisible, setDeviceDetailVisible] = useState(false);
@@ -92,7 +93,6 @@ const BigScreen = ({ visible, onClose }) => {
     passRate: '0.0'
   });
 
-  // 更新时间展示
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(
@@ -266,108 +266,176 @@ const BigScreen = ({ visible, onClose }) => {
     XLSX.writeFile(workbook, `维护记录_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
-  return (
-    <Modal
-      title={null}
-      open={visible}
-      onCancel={onClose}
-      footer={null}
-      width="100vw"
-      style={{ top: 0, padding: 0, margin: 0, maxWidth: '100vw' }}
-      styles={{
-        body: {
-          padding: 0,
-          margin: 0,
-          height: '100vh',
-          width: '100vw',
-          overflow: 'hidden'
+  const themeConfig = isDarkMode
+    ? {
+        algorithm: theme.darkAlgorithm,
+        token: {
+          colorPrimary: '#00a8ff',
+          colorBgBase: '#050d19',
+          colorBgContainer: '#0a1f3c',
+          colorText: '#e0e0e0',
+          colorTextSecondary: '#a6b0c3',
+          colorBorder: 'rgba(0, 168, 255, 0.2)'
+        },
+        components: {
+          Modal: {
+            contentBg: '#0a1f3c',
+            headerBg: '#0a1f3c',
+            footerBg: '#0a1f3c',
+            titleColor: '#4fc3f7'
+          },
+          Table: {
+            headerBg: 'rgba(0, 168, 255, 0.1)',
+            headerColor: '#4fc3f7',
+            rowHoverBg: 'rgba(0, 168, 255, 0.05)',
+            borderColor: 'rgba(0, 168, 255, 0.1)'
+          },
+          Select: {
+            selectorBg: 'rgba(0, 168, 255, 0.1)',
+            optionSelectedBg: 'rgba(0, 168, 255, 0.2)'
+          }
         }
-      }}
-      wrapClassName="big-screen-modal-wrapper"
-      className="big-screen-modal"
-      destroyOnHidden
-      maskClosable={false}
-      keyboard={false}
-      closable
+      }
+    : {
+        algorithm: theme.defaultAlgorithm,
+        token: {
+          colorPrimary: '#1890ff',
+          colorBgBase: '#f0f2f5',
+          colorBgContainer: '#ffffff',
+          colorText: '#1f1f1f',
+          colorTextSecondary: '#595959',
+          colorBorder: '#d9d9d9'
+        },
+        components: {
+          Modal: {
+            contentBg: '#ffffff',
+            headerBg: '#ffffff',
+            footerBg: '#ffffff',
+            titleColor: '#1f1f1f'
+          },
+          Table: {
+            headerBg: '#f5faff',
+            headerColor: '#1f1f1f',
+            rowHoverBg: 'rgba(24, 144, 255, 0.06)',
+            borderColor: '#e6eaf0'
+          },
+          Select: {
+            selectorBg: '#ffffff',
+            optionSelectedBg: '#e6f4ff'
+          }
+        }
+      };
+
+  return (
+    <ConfigProvider
+      theme={themeConfig}
     >
-      <div className="big-screen-container">
-        {/* 顶部区域 */}
-        <Header
-          title="工业机器人软袋小包药品柔性智能监控系统"
-          currentTime={currentTime}
-          apiStatus={apiStatus}
-        />
+      <Modal
+        title={null}
+        open={visible}
+        onCancel={onClose}
+        footer={null}
+        width="100vw"
+        style={{ top: 0, padding: 0, margin: 0, maxWidth: '100vw' }}
+        styles={{
+          body: {
+            padding: 0,
+            margin: 0,
+            height: '100vh',
+            width: '100vw',
+            overflow: 'hidden'
+          }
+        }}
+        wrapClassName="big-screen-modal-wrapper"
+        className="big-screen-modal"
+        destroyOnHidden
+        maskClosable={false}
+        keyboard={false}
+        closable
+      >
+        <div className="big-screen-container" data-theme={isDarkMode ? 'dark' : 'light'}>
+          {/* 顶部区域 */}
+          <Header
+            title="工业机器人软袋小包药品柔性智能监控系统"
+            currentTime={currentTime}
+            apiStatus={apiStatus}
+            isDarkMode={isDarkMode}
+            onThemeChange={setIsDarkMode}
+          />
 
-        <div className="big-screen-content">
-          {/* 左侧区域 */}
-          <div className="left-panel">
-            <div className="metrics-section">
-              <div className="panel-title">
-                <ReloadOutlined style={{ marginRight: '8px', fontSize: '18px', color: '#4fc3f7' }} />
-                <span>设备情况</span>
+          <div className="big-screen-content">
+            {/* 左侧区域 */}
+            <div className="left-panel">
+              <div className="metrics-section">
+                <div className="panel-title">
+                  <ReloadOutlined style={{ marginRight: '8px', fontSize: '18px', color: '#4fc3f7' }} />
+                  <span>设备情况</span>
+                </div>
+                <KeyMetrics metrics={keyMetrics} />
               </div>
-              <KeyMetrics metrics={keyMetrics} />
-            </div>
-            {/* 实时视频模块 */}
-            <div className="realtime-video-container">
-              <div className="panel-title">
-                <span role="img" aria-label="video" style={{ marginRight: '8px', fontSize: '18px', color: '#4fc3f7' }}>📹</span>
-                <span>实时视频</span>
-              </div>
-              <img
-                className="realtime-video"
-                src={realtimeGif}
-                alt="实时监控"
-                style={{
-                  width: '100%',
-                  height: '220px',
-                  objectFit: 'cover',
-                  borderRadius: '4px',
-                  background: '#000'
-                }}
-              />
-              {/* 可扩展摄像头切换等功能 */}
-            </div>
-            <EventFlow events={packageEvents} packageStats={packageStats} />
-          </div>
-
-          {/* 中间区域 */}
-          <div className="center-panel">
-            <div className="center-flex-col">
-              <div className="center-area1">
-                <DeviceMap />
-              </div>
-              <div className="center-area2">
-                <TimeSeriesChart
-                  data={timeSeriesData}
-                  timeRange={timeRange}
-                  onTimeRangeChange={handleTimeRangeChange}
+              {/* 实时视频模块 */}
+              <div className="realtime-video-container">
+                <div className="panel-title">
+                  <span role="img" aria-label="video" style={{ marginRight: '8px', fontSize: '18px', color: '#4fc3f7' }}>📹</span>
+                  <span>实时视频</span>
+                </div>
+                <img
+                  className="realtime-video"
+                  src={realtimeGif}
+                  alt="实时监控"
+                  style={{
+                    width: '100%',
+                    height: '220px',
+                    objectFit: 'cover',
+                    borderRadius: '4px',
+                    background: '#000'
+                  }}
                 />
+                {/* 可扩展摄像头切换等功能 */}
+              </div>
+              <EventFlow events={packageEvents} packageStats={packageStats} />
+            </div>
+
+            {/* 中间区域 */}
+            <div className="center-panel">
+              <div className="center-flex-col">
+                <div className="center-area1">
+                  <DeviceMap />
+                </div>
+                <div className="center-area2">
+                  <TimeSeriesChart
+                    data={timeSeriesData}
+                    timeRange={timeRange}
+                    onTimeRangeChange={handleTimeRangeChange}
+                    isDarkMode={isDarkMode}
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* 右侧区域 */}
-          <div className="right-panel">
-            <AlertPanel alerts={aiAlerts} onAlertClick={handleDeviceClick} />
-            <OperationPanel
-              maintenanceRecords={maintenanceRecords}
-              onMaintenance={handleMaintenance}
-              onExportData={handleExportData}
-              selectedDevice={selectedDevice}
-              onAddMaintenance={handleAddMaintenance}
-            />
+            {/* 右侧区域 */}
+            <div className="right-panel">
+              <AlertPanel alerts={aiAlerts} onAlertClick={handleDeviceClick} />
+              <OperationPanel
+                maintenanceRecords={maintenanceRecords}
+                onMaintenance={handleMaintenance}
+                onExportData={handleExportData}
+                selectedDevice={selectedDevice}
+                onAddMaintenance={handleAddMaintenance}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* 设备详情弹窗 */}
-      <DeviceDetail
-        visible={deviceDetailVisible}
-        device={selectedDevice}
-        onClose={() => setDeviceDetailVisible(false)}
-      />
-    </Modal>
+        {/* 设备详情弹窗 */}
+        <DeviceDetail
+          visible={deviceDetailVisible}
+          device={selectedDevice}
+          onClose={() => setDeviceDetailVisible(false)}
+          isDarkMode={isDarkMode}
+        />
+      </Modal>
+    </ConfigProvider>
   );
 };
 

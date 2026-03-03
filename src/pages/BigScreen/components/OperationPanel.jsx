@@ -5,6 +5,7 @@ import { ToolOutlined, DownloadOutlined } from '@ant-design/icons';
 const OPERATOR_LIST = ['视觉算法工程师', '智能体开发工程师', '智能运维工程师', '智能制造工程师', ];
 
 const OperationPanel = ({ maintenanceRecords, onExportData, selectedDevice, onAddMaintenance }) => {
+  const [messageApi, contextHolder] = message.useMessage();
   // 表格列定义
   const columns = [
     {
@@ -43,11 +44,11 @@ const OperationPanel = ({ maintenanceRecords, onExportData, selectedDevice, onAd
   };
   const handleModalOk = () => {
     if (!selectedOperator) {
-      message.warning('请选择操作员');
+      messageApi.warning('请选择操作员');
       return;
     }
     if (!actionText.trim()) {
-      message.warning('请填写操作内容');
+      messageApi.warning('请填写操作内容');
       return;
     }
     // 新维护记录
@@ -71,6 +72,7 @@ const OperationPanel = ({ maintenanceRecords, onExportData, selectedDevice, onAd
 
   return (
     <div className="operation-panel-container">
+      {contextHolder}
       <div className="panel-title">
         <ToolOutlined style={{ marginRight: '8px', fontSize: '18px', color: '#4fc3f7' }} />
         <span>操作面板</span>
@@ -162,14 +164,14 @@ const OperationPanel = ({ maintenanceRecords, onExportData, selectedDevice, onAd
           display: flex;
           flex-direction: column;
           height: 100%;
-          border: 1px solid rgba(240, 240, 240, 0.8);
+          border: 1px solid var(--table-row-border);
           border-radius: 4px;
           overflow: hidden;
         }
         
         .enhanced-table-header {
-          background-color: rgba(24, 144, 255, 0.1);
-          border-bottom: 2px solid #1890ff;
+          background-color: var(--table-header-bg);
+          border-bottom: 2px solid var(--primary-color);
         }
         
         .enhanced-table-body {
@@ -187,22 +189,23 @@ const OperationPanel = ({ maintenanceRecords, onExportData, selectedDevice, onAd
           padding: 12px 8px;
           text-align: center;
           font-weight: 500;
-          color: #333;
-          background-color: rgba(24, 144, 255, 0.1);
+          color: var(--table-header-text);
+          background-color: var(--table-header-bg);
         }
         
         .enhanced-table td {
           padding: 10px 8px;
           text-align: center;
-          border-bottom: 1px solid rgba(240, 240, 240, 0.8);
+          border-bottom: 1px solid var(--table-row-border);
+          color: var(--text-color);
         }
         
         .enhanced-table tbody tr:hover {
-          background-color: rgba(24, 144, 255, 0.05);
+          background-color: var(--table-row-hover);
         }
         
         .enhanced-table tbody tr:nth-child(even) {
-          background-color: rgba(250, 250, 250, 0.5);
+          background-color: var(--table-row-even);
         }
       `}</style>
     </div>

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
 import { LineChartOutlined } from '@ant-design/icons';
 
-const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange }) => {
+const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => {
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
 
@@ -13,23 +13,35 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange }) => {
     }
   };
 
-  const getOption = () => ({
+  const getOption = () => {
+    const textColor = isDarkMode ? '#a6b0c3' : '#595959';
+    const splitLineColor = isDarkMode ? 'rgba(166, 176, 195, 0.1)' : 'rgba(0, 0, 0, 0.08)';
+    const tooltipBg = isDarkMode ? 'rgba(10, 31, 60, 0.9)' : 'rgba(255, 255, 255, 0.95)';
+    const tooltipBorder = isDarkMode ? '#00a8ff' : '#d9d9d9';
+    const tooltipText = isDarkMode ? '#ffffff' : '#1f1f1f';
+
+    return {
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
+        backgroundColor: tooltipBg,
+        borderColor: tooltipBorder,
+        textStyle: {
+          color: tooltipText
+        },
         axisPointer: {
           type: 'cross',
           label: {
-            backgroundColor: '#6a7985'
+            backgroundColor: isDarkMode ? '#006cb8' : '#1890ff'
           }
         },
         formatter: function (params) {
-          let result = `<div style="font-weight:bold;margin-bottom:5px;">${params[0].axisValue}</div>`;
+          let result = `<div style="font-weight:bold;margin-bottom:5px;color:${tooltipText};">${params[0].axisValue}</div>`;
           params.forEach(param => {
             const unit = param.seriesName === '温度' ? '°C' : 'm/s²';
             result += `<div style="display:flex;align-items:center;">
               <span style="display:inline-block;width:10px;height:10px;background-color:${param.color};margin-right:5px;"></span>
-              <span>${param.seriesName}: ${param.value}${unit}</span>
+              <span style="color:${tooltipText};">${param.seriesName}: ${param.value}${unit}</span>
             </div>`;
           });
           return result;
@@ -44,7 +56,7 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange }) => {
       legend: {
         data: ['温度', '振动'],
         textStyle: {
-          color: '#333'
+          color: textColor
         },
         right: 10,
         top: 0
@@ -56,11 +68,11 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange }) => {
           data: data.timestamps,
           axisLine: {
             lineStyle: {
-              color: '#333'
+              color: textColor
             }
           },
           axisLabel: {
-            color: '#333'
+            color: textColor
           }
         }
       ],
@@ -69,23 +81,23 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange }) => {
           type: 'value',
           name: '温度 (°C)',
           nameTextStyle: {
-            color: '#333'
+            color: textColor
           },
           min: 0,
           max: 100,
           interval: 20,
           axisLine: {
             lineStyle: {
-              color: '#333'
+              color: textColor
             }
           },
           axisLabel: {
-            color: '#333',
+            color: textColor,
             formatter: '{value} °C'
           },
           splitLine: {
             lineStyle: {
-              color: 'rgba(51, 51, 51, 0.2)'
+              color: splitLineColor
             }
           }
         },
@@ -93,18 +105,18 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange }) => {
           type: 'value',
           name: '振动 (m/s²)',
           nameTextStyle: {
-            color: '#333'
+            color: textColor
           },
           min: 0,
           max: 10,
           interval: 2,
           axisLine: {
             lineStyle: {
-              color: '#333'
+              color: textColor
             }
           },
           axisLabel: {
-            color: '#333',
+            color: textColor,
             formatter: '{value} m/s²'
           },
           splitLine: {
@@ -172,7 +184,8 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange }) => {
           }
         }
       ]
-    });
+    };
+  };
 
   useEffect(() => {
     if (!chartRef.current) {
@@ -200,27 +213,14 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange }) => {
     if (!chartInstanceRef.current) {
       return;
     }
-    chartInstanceRef.current.setOption(
-      {
-        xAxis: [
-          {
-            data: data.timestamps
-          }
-        ],
-        series: [
-          { data: data.temperature },
-          { data: data.vibration }
-        ]
-      },
-      { notMerge: false, lazyUpdate: true }
-    );
-  }, [data]);
+    chartInstanceRef.current.setOption(getOption(), { notMerge: false, lazyUpdate: true });
+  }, [data, isDarkMode]);
 
   return (
     <div className="time-series-container" style={{ height: '100%' }}>
       <div className="chart-header">
         <div className="chart-title">
-          <LineChartOutlined style={{ marginRight: '8px', fontSize: '18px', color: '#4fc3f7' }} />
+          <LineChartOutlined style={{ marginRight: '8px', fontSize: '18px', color: 'var(--primary-color)' }} />
           设备实时监控数据
         </div>
         <div className="time-range-selector">
