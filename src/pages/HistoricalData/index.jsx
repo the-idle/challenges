@@ -10,7 +10,6 @@ import {
   Table,
   Typography,
   Spin,
-  Tooltip,
   Checkbox,
   Modal,
   Form,
@@ -758,7 +757,7 @@ const HistoricalData = () => {
       <Spin spinning={loading && !historicalData}>
         <Row gutter={[16, 16]}>
           <Col span={24}>
-            <Card bordered={false}>
+            <Card variant="borderless">
               <Title level={3}>历史数据分析</Title>
 
               <Form layout="horizontal">
@@ -838,30 +837,27 @@ const HistoricalData = () => {
               <Col span={24}>
                 <Card
                   title="数据可视化"
-                  bordered={false}
+                  variant="borderless"
                   extra={
                     <Space>
-                      <Tooltip title="折线图">
-                        <Button
-                          type={chartType === 'line' ? 'primary' : 'default'}
-                          icon={<LineChartOutlined />}
-                          onClick={() => setChartType('line')}
-                        />
-                      </Tooltip>
-                      <Tooltip title="柱状图">
-                        <Button
-                          type={chartType === 'bar' ? 'primary' : 'default'}
-                          icon={<BarChartOutlined />}
-                          onClick={() => setChartType('bar')}
-                        />
-                      </Tooltip>
-                      <Tooltip title="散点图">
-                        <Button
-                          type={chartType === 'scatter' ? 'primary' : 'default'}
-                          icon={<PieChartOutlined />}
-                          onClick={() => setChartType('scatter')}
-                        />
-                      </Tooltip>
+                      <Button
+                        type={chartType === 'line' ? 'primary' : 'default'}
+                        icon={<LineChartOutlined />}
+                        onClick={() => setChartType('line')}
+                        title="折线图"
+                      />
+                      <Button
+                        type={chartType === 'bar' ? 'primary' : 'default'}
+                        icon={<BarChartOutlined />}
+                        onClick={() => setChartType('bar')}
+                        title="柱状图"
+                      />
+                      <Button
+                        type={chartType === 'scatter' ? 'primary' : 'default'}
+                        icon={<PieChartOutlined />}
+                        onClick={() => setChartType('scatter')}
+                        title="散点图"
+                      />
                       <Button
                         icon={<DownloadOutlined />}
                         onClick={handleExportData}
@@ -878,7 +874,7 @@ const HistoricalData = () => {
 
             <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
               <Col span={24}>
-                <Card title="故障率分析" bordered={false}
+                <Card title="故障率分析" variant="borderless"
                   extra={
                     <Button icon={<DownloadOutlined />} onClick={() => setFaultExportVisible(true)}>
                       导出数据
@@ -892,7 +888,7 @@ const HistoricalData = () => {
 
             <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
               <Col span={24}>
-                <Card title="历史数据表格" bordered={false}
+                <Card title="历史数据表格" variant="borderless"
                   extra={
                     <Button icon={<DownloadOutlined />} onClick={() => setTableExportVisible(true)}>
                       导出数据

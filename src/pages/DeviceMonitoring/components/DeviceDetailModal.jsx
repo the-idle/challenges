@@ -343,7 +343,7 @@ const DeviceDetailModal = ({
     }
 
     return (
-      <Card title={`设备详情: ${deviceDetail.name}`} bordered={false}>
+      <Card title={`设备详情: ${deviceDetail.name}`} variant="borderless">
         <Tabs
           defaultActiveKey="realtime"
           items={[
@@ -506,7 +506,7 @@ const DeviceDetailModal = ({
               children: (
                 <Row gutter={[16, 16]}>
                   <Col span={12}>
-                    <Card title="基本信息" bordered={false}>
+                    <Card title="基本信息" variant="borderless">
                       <p><strong>设备ID:</strong> {deviceDetail.id}</p>
                       <p><strong>设备名称:</strong> {deviceDetail.name}</p>
                       <p><strong>设备型号:</strong> {deviceDetail.model}</p>
@@ -515,7 +515,7 @@ const DeviceDetailModal = ({
                     </Card>
                   </Col>
                   <Col span={12}>
-                    <Card title="运行信息" bordered={false}>
+                    <Card title="运行信息" variant="borderless">
                       <p><strong>运行时间:</strong> {deviceDetail.metrics.power.history.length} 小时</p>
                       <p><strong>维护周期:</strong> {deviceDetail.nextMaintenance}</p>
                       <p><strong>上次维护:</strong> {deviceDetail.lastMaintenance}</p>
@@ -533,7 +533,7 @@ const DeviceDetailModal = ({
                 <div>
                   <Row gutter={[16, 16]}>
                     <Col span={8}>
-                      <Card title="当前状态" bordered={false}>
+                      <Card title="当前状态" variant="borderless">
                         <p><strong>设备状态:</strong> 正常运行</p>
                         <p><strong>运行时长:</strong> 2160小时</p>
                         <p><strong>上次维护:</strong> 2024-05-15</p>
@@ -541,7 +541,7 @@ const DeviceDetailModal = ({
                       </Card>
                     </Col>
                     <Col span={8}>
-                      <Card title="维护建议" bordered={false}>
+                      <Card title="维护建议" variant="borderless">
                         <p><strong>建议类型:</strong> 定期保养</p>
                         <p><strong>紧急程度:</strong> 中等</p>
                         <p><strong>预计成本:</strong> ¥2,800</p>
@@ -549,7 +549,7 @@ const DeviceDetailModal = ({
                       </Card>
                     </Col>
                     <Col span={8}>
-                      <Card title="风险评估" bordered={false}>
+                      <Card title="风险评估" variant="borderless">
                         <p><strong>潜在风险:</strong> 轴承磨损</p>
                         <p><strong>影响程度:</strong> 中等</p>
                         <p><strong>故障概率:</strong> 15%</p>

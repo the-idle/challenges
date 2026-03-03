@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button, Table, Space, Modal, Select, message, Input } from 'antd';
 import { ToolOutlined, DownloadOutlined } from '@ant-design/icons';
 
-const OPERATOR_LIST = ['张工程师', '李技术员', '王维修师', '赵工程师', '刘技术员'];
+const OPERATOR_LIST = ['视觉算法工程师', '智能体开发工程师', '智能运维工程师', '智能制造工程师', ];
 
 const OperationPanel = ({ maintenanceRecords, onMaintenance, onExportData, selectedDevice, onAddMaintenance }) => {
   // 表格列定义

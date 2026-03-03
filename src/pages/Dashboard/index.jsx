@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Row, Col, Card, Statistic, Progress, Badge, Select, Typography, Spin, Button, Divider, Tooltip, Space, Tag, Avatar, List, Timeline, Modal, message, Dropdown } from 'antd';
+import { Row, Col, Card, Statistic, Progress, Badge, Select, Typography, Spin, Button, Divider, Space, Tag, Avatar, List, Timeline, Modal, message, Dropdown } from 'antd';
 import './index.css'; // 添加自定义样式文件
 import {
   ArrowUpOutlined,
@@ -351,7 +351,7 @@ const Dashboard = () => {
               <Card
                 className={`event-card ${event.status}`}
                 size="small"
-                bordered={false}
+                variant="borderless"
                 style={{
                   backgroundColor: 'rgba(0,0,0,0.02)',
                   borderRadius: '4px',
@@ -415,40 +415,37 @@ const Dashboard = () => {
                 defaultValue="all"
                 style={{ width: 120 }}
                 onChange={(value) => setFilterType(value)}
-                dropdownMatchSelectWidth={false}
+                popupMatchSelectWidth={false}
               >
                 <Option value="all">全部设备</Option>
                 <Option value="line1">生产线1</Option>
                 <Option value="line2">生产线2</Option>
                 <Option value="line3">生产线3</Option>
               </Select>
-              <Tooltip title="导出数据">
-                <Dropdown
-                  menu={{ items: exportMenuItems }}
-                  placement="bottomRight"
-                >
-                  <Button
-                    type="primary"
-                    icon={<DownloadOutlined />}
-                  >
-                    导出数据
-                  </Button>
-                </Dropdown>
-              </Tooltip>
-              <Tooltip title="刷新数据">
+              <Dropdown
+                menu={{ items: exportMenuItems }}
+                placement="bottomRight"
+              >
                 <Button
                   type="primary"
-                  icon={<ReloadOutlined />}
-                  onClick={refreshData}
-                  loading={refreshing}
-                />
-              </Tooltip>
-              <Tooltip title="设置">
-                <Button
-                  icon={<SettingOutlined />}
-                  onClick={() => navigate('/settings')}
-                />
-              </Tooltip>
+                  icon={<DownloadOutlined />}
+                  title="导出数据"
+                >
+                  导出数据
+                </Button>
+              </Dropdown>
+              <Button
+                type="primary"
+                icon={<ReloadOutlined />}
+                onClick={refreshData}
+                loading={refreshing}
+                title="刷新数据"
+              />
+              <Button
+                icon={<SettingOutlined />}
+                onClick={() => navigate('/settings')}
+                title="设置"
+              />
             </Space>
           </div>
         </div>
@@ -458,7 +455,7 @@ const Dashboard = () => {
           <Col xs={24} sm={24} md={24} lg={24} xl={24}>
             <Card
               title="设备状态概览"
-              bordered={false}
+              variant="borderless"
               styles={{
                 body: {
                   padding: '16px'
@@ -468,7 +465,7 @@ const Dashboard = () => {
               <Row gutter={[24, 24]}>
                 <Col xs={24} sm={12} md={6} lg={6} xl={6}>
                   <Card
-                    bordered={false}
+                    variant="borderless"
                     className="stat-card"
                     styles={{
                       body: {
@@ -489,7 +486,7 @@ const Dashboard = () => {
                 </Col>
                 <Col xs={24} sm={12} md={6} lg={6} xl={6}>
                   <Card
-                    bordered={false}
+                    variant="borderless"
                     className="stat-card"
                     styles={{
                       body: {
@@ -510,7 +507,7 @@ const Dashboard = () => {
                 </Col>
                 <Col xs={24} sm={12} md={6} lg={6} xl={6}>
                   <Card
-                    bordered={false}
+                    variant="borderless"
                     className="stat-card"
                     styles={{
                       body: {
@@ -531,7 +528,7 @@ const Dashboard = () => {
                 </Col>
                 <Col xs={24} sm={12} md={6} lg={6} xl={6}>
                   <Card
-                    bordered={false}
+                    variant="borderless"
                     className="stat-card"
                     styles={{
                       body: {
@@ -584,7 +581,12 @@ const Dashboard = () => {
                 </div>
               }
               extra={<Button type="link" size="small" onClick={() => setBigScreenVisible(true)}>查看详情</Button>}
-              bodyStyle={{ padding: '12px', height: '360px' }}
+              styles={{
+                body: {
+                  padding: '12px',
+                  height: '360px'
+                }
+              }}
             >
               <div ref={deviceHealthChartRef} style={{ height: '320px', width: '100%' }} />
             </Card>
@@ -592,7 +594,7 @@ const Dashboard = () => {
           <Col xs={24} sm={24} md={12} lg={12} xl={12}>
             <Card
               title="设备事件流"
-              bordered={false}
+              variant="borderless"
               styles={{
                 body: {
                   padding: '12px',
@@ -613,7 +615,11 @@ const Dashboard = () => {
           footer={null}
           width={600}
           className="event-detail-modal"
-          bodyStyle={{ padding: 0 }}
+          styles={{
+            body: {
+              padding: 0
+            }
+          }}
         >
           {currentEvent && (
             <div className="event-detail-container">

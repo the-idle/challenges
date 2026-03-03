@@ -60,7 +60,7 @@ const MaintenanceScheduleModal = ({ visible, onCancel, onConfirm, suggestion }) 
       onOk={handleOk}
       onCancel={handleCancel}
       confirmLoading={loading}
-      destroyOnClose
+      destroyOnHidden
       width={600}
       footer={[
         <Button key="back" onClick={handleCancel}>

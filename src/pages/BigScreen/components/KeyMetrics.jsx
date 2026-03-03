@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Progress, Tooltip } from 'antd';
+import { Progress } from 'antd';
 import { DashboardOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 
 const KeyMetrics = ({ metrics }) => {
@@ -126,34 +126,32 @@ const KeyMetrics = ({ metrics }) => {
         };
 
         return (
-          <Tooltip
+          <div
             key={metric.id}
+            className="metric-card"
             title={`阈值: ${metric.threshold}${metric.unit}`}
-            color="#001529"
           >
-            <div className="metric-card">
-              <div className="metric-header">
-                {getMetricIcon()}
-                <div className="metric-title">{metric.title}</div>
-                {getTrendIndicator()}
-              </div>
-
-              <div className="metric-value-container">
-                <div className="metric-value">
-                  {Math.round(metric.animatedValue * 10) / 10}{metric.unit}
-                </div>
-              </div>
-
-              <Progress
-                className="metric-progress"
-                percent={progressPercent}
-                size="small"
-                strokeColor={getProgressColor(status)}
-                trailColor="rgba(255, 255, 255, 0.1)"
-                showInfo={false}
-              />
+            <div className="metric-header">
+              {getMetricIcon()}
+              <div className="metric-title">{metric.title}</div>
+              {getTrendIndicator()}
             </div>
-          </Tooltip>
+
+            <div className="metric-value-container">
+              <div className="metric-value">
+                {Math.round(metric.animatedValue * 10) / 10}{metric.unit}
+              </div>
+            </div>
+
+            <Progress
+              className="metric-progress"
+              percent={progressPercent}
+              size="small"
+              strokeColor={getProgressColor(status)}
+              trailColor="rgba(255, 255, 255, 0.1)"
+              showInfo={false}
+            />
+          </div>
         );
       })}
     </div>

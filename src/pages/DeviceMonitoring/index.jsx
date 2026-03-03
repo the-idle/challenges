@@ -344,7 +344,7 @@ const DeviceMonitoring = () => {
 
       <Row gutter={[16, 16]}>
         <Col span={24}>
-          <Card title="设备列表" bordered={false}>
+          <Card title="设备列表" variant="borderless">
             <Table
               dataSource={deviceList}
               columns={columns}

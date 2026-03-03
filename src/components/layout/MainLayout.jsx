@@ -85,14 +85,19 @@ const MainLayout = () => {
     navigate('/login');
   };
 
-  // 用户信息下拉菜单
-  const userMenu = (
-    <Menu>
-      <Menu.Item key="logout" icon={<LogoutOutlined />} onClick={handleLogout}>
-        退出登录
-      </Menu.Item>
-    </Menu>
-  );
+  const userMenuItems = [
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '退出登录',
+    },
+  ];
+
+  const handleUserMenuClick = ({ key }) => {
+    if (key === 'logout') {
+      handleLogout();
+    }
+  };
 
   // 处理菜单点击事件
   const handleMenuClick = ({ key }) => {
@@ -195,7 +200,10 @@ const MainLayout = () => {
 
           {/* 用户信息展示模块 */}
           <div style={{ marginRight: 32 }}>
-            <Dropdown overlay={userMenu} placement="bottomRight">
+            <Dropdown
+              menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
+              placement="bottomRight"
+            >
               <Space>
                 <Avatar size={32} icon={<UserOutlined />} />
                 <span style={{ fontWeight: 500, color: '#0A1F3C' }}>admin</span>

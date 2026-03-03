@@ -32,7 +32,7 @@ const MaintenanceDetailModal = ({ visible, onClose, suggestionData, maintenanceD
       footer={null}
       maskClosable={false}
       centered
-      destroyOnClose
+      destroyOnHidden
       styles={{
         body: {
           maxHeight: '80vh',

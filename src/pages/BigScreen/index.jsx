@@ -184,7 +184,7 @@ const BigScreen = ({ visible, onClose }) => {
       }}
       wrapClassName="big-screen-modal-wrapper"
       className="big-screen-modal"
-      destroyOnClose
+      destroyOnHidden
       maskClosable={false}
       keyboard={false}
       closable

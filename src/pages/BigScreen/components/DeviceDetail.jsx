@@ -131,7 +131,7 @@ const DeviceDetail = ({ visible, device, onClose }) => {
       label: '历史趋势',
       children: (
         <div style={{ padding: '16px' }}>
-          <Card title="温度趋势" bordered={false}>
+          <Card title="温度趋势" variant="borderless">
             <div ref={chartRef} style={{ height: '300px', width: '100%' }} />
           </Card>
         </div>
