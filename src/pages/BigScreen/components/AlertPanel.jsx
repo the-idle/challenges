@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Badge, Tag, Tooltip } from 'antd';
+import { Badge, Tag } from 'antd';
 import { WarningOutlined, ExclamationCircleOutlined, AlertOutlined, BellOutlined } from '@ant-design/icons';
 
 const AlertPanel = ({ alerts, onAlertClick }) => {
@@ -93,7 +93,7 @@ const AlertPanel = ({ alerts, onAlertClick }) => {
           <div
             key={alert.id}
             className={getAlertClassName(alert)}
-            onClick={() => onAlertClick && onAlertClick({ id: alert.deviceId, name: alert.deviceName })}
+            onClick={() => onAlertClick && onAlertClick(alert)}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -106,11 +106,19 @@ const AlertPanel = ({ alerts, onAlertClick }) => {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#666' }}>
-              <span>{alert.type}</span>
-              <span style={{ fontSize: '12px' }}>{alert.time.split(' ')[1]}</span>
+              <span>{alert.summary || alert.type}</span>
+              <span style={{ fontSize: '12px' }}>{alert.time?.includes(' ') ? alert.time.split(' ')[1] : alert.time}</span>
             </div>
+            {alert.rootCause ? (
+              <div style={{ marginTop: '8px', fontSize: '12px', color: '#999' }}>
+                根因：{alert.rootCause}
+              </div>
+            ) : null}
           </div>
         ))}
+        {animatedAlerts.length === 0 ? (
+          <div style={{ color: '#999', textAlign: 'center', marginTop: '20px' }}>等待智能体诊断推送...</div>
+        ) : null}
       </div>
     </div>
   );

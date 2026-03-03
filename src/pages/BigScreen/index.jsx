@@ -3,15 +3,18 @@ import { Modal } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import './styles.css';
 import * as XLSX from 'xlsx';
+import {
+  getAIDiagnosisAlerts,
+  getRobotPackageSnapshot,
+  subscribeAIDiagnosisAlerts,
+  subscribeRobotPackageEvents
+} from '../../api/alarm';
 
 // 导入模拟数据
 import {
-  mockDeviceLocations,
   mockKeyMetrics,
   mockTimeSeriesData,
-  mockAlerts,
   mockMaintenanceRecords,
-  mockEventFlowData
 } from './data.js';
 
 const realtimeGif = '/jxb.gif';
@@ -27,17 +30,67 @@ import OperationPanel from './components/OperationPanel';
 import EventFlow from './components/EventFlow';
 import DeviceDetail from './components/DeviceDetail';
 
+const LEVEL_TO_STATUS = {
+  high: 'fault',
+  medium: 'warning',
+  low: 'normal'
+};
+
+const createPackageStats = (events) => {
+  const total = events.length;
+  const abnormal = events.filter((item) => item.result === 'abnormal').length;
+  const ok = total - abnormal;
+  const passRate = total > 0 ? ((ok / total) * 100).toFixed(1) : '0.0';
+  return {
+    total,
+    ok,
+    abnormal,
+    passRate
+  };
+};
+
+const normalizeAlertToDevice = (alert) => {
+  if (!alert) {
+    return null;
+  }
+  return {
+    id: alert.deviceId || alert.id,
+    deviceId: alert.deviceId || alert.id,
+    name: alert.deviceName || alert.name,
+    deviceName: alert.deviceName || alert.name,
+    status: alert.statusCode || LEVEL_TO_STATUS[alert.level] || alert.status || 'warning',
+    level: alert.level,
+    type: alert.type,
+    summary: alert.summary || alert.type,
+    rootCause: alert.rootCause,
+    recommendation: alert.recommendation,
+    confidence: alert.confidence,
+    diagnosisTime: alert.time,
+    temperature: alert.temperature ?? '-',
+    vibration: alert.vibration ?? '-'
+  };
+};
+
 const BigScreen = ({ visible, onClose }) => {
   const [timeRange, setTimeRange] = useState('1h');
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [deviceDetailVisible, setDeviceDetailVisible] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleString());
-  const [apiStatus, setApiStatus] = useState('connected'); // 'connected' or 'disconnected'
-  // 新增维护记录状态
+  const [apiStatus, setApiStatus] = useState('connected');
+  const [aiAgentStatus, setAiAgentStatus] = useState('connected');
+  const [robotStatus, setRobotStatus] = useState('connected');
   const [maintenanceRecords, setMaintenanceRecords] = useState([...mockMaintenanceRecords]);
 
   const [keyMetrics, setKeyMetrics] = useState([...mockKeyMetrics]);
   const [timeSeriesData, setTimeSeriesData] = useState({ ...mockTimeSeriesData });
+  const [aiAlerts, setAiAlerts] = useState([]);
+  const [packageEvents, setPackageEvents] = useState([]);
+  const [packageStats, setPackageStats] = useState({
+    total: 0,
+    ok: 0,
+    abnormal: 0,
+    passRate: '0.0'
+  });
 
   // 更新时间展示
   useEffect(() => {
@@ -57,14 +110,9 @@ const BigScreen = ({ visible, onClose }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // 模拟API连接状态变化
   useEffect(() => {
-    const statusTimer = setInterval(() => {
-      setApiStatus(Math.random() > 0.1 ? 'connected' : 'disconnected');
-    }, 30000); // 每30秒有10%的概率断开连接
-
-    return () => clearInterval(statusTimer);
-  }, []);
+    setApiStatus(aiAgentStatus === 'connected' && robotStatus === 'connected' ? 'connected' : 'disconnected');
+  }, [aiAgentStatus, robotStatus]);
 
   useEffect(() => {
     const metricTimer = setInterval(() => {
@@ -122,46 +170,99 @@ const BigScreen = ({ visible, onClose }) => {
     return () => clearInterval(seriesTimer);
   }, []);
 
-  // 处理设备点击
+  useEffect(() => {
+    if (!visible) {
+      return undefined;
+    }
+    let mounted = true;
+    getAIDiagnosisAlerts()
+      .then((res) => {
+        if (!mounted) {
+          return;
+        }
+        const rows = res?.rows || [];
+        setAiAlerts(rows);
+        if (rows.length > 0) {
+          setSelectedDevice(normalizeAlertToDevice(rows[0]));
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setAiAgentStatus('disconnected');
+        }
+      });
+    getRobotPackageSnapshot()
+      .then((res) => {
+        if (!mounted) {
+          return;
+        }
+        const rows = res?.rows || [];
+        setPackageEvents(rows);
+        setPackageStats(createPackageStats(rows));
+      })
+      .catch(() => {
+        if (mounted) {
+          setRobotStatus('disconnected');
+        }
+      });
+
+    const unsubscribeDiagnosis = subscribeAIDiagnosisAlerts(
+      (payload) => {
+        if (!mounted) {
+          return;
+        }
+        setAiAlerts((prev) => [payload, ...prev].slice(0, 20));
+      },
+      setAiAgentStatus
+    );
+    const unsubscribePackages = subscribeRobotPackageEvents(
+      (payload) => {
+        if (!mounted) {
+          return;
+        }
+        setPackageEvents((prev) => {
+          const nextEvents = [payload, ...prev].slice(0, 30);
+          setPackageStats(createPackageStats(nextEvents));
+          return nextEvents;
+        });
+      },
+      setRobotStatus
+    );
+
+    return () => {
+      mounted = false;
+      unsubscribeDiagnosis();
+      unsubscribePackages();
+    };
+  }, [visible]);
+
   const handleDeviceClick = (device) => {
-    setSelectedDevice(device);
+    setSelectedDevice(normalizeAlertToDevice(device));
     setDeviceDetailVisible(true);
   };
 
-  // 处理故障预警卡片点击（使用与地图一致的处理）
-  // 如需区分可在此扩展
-
-  // 处理时间范围变化
   const handleTimeRangeChange = (range) => {
     setTimeRange(range);
-    // 这里可以添加根据时间范围获取数据的逻辑
   };
 
-  // 处理立即维护
   const handleMaintenance = () => {
-    // 这里可以添加维护逻辑
     console.log('维护设备:', selectedDevice);
   };
 
-  // 新增维护记录
   const handleAddMaintenance = (newRecord) => {
     setMaintenanceRecords((prev) => [newRecord, ...prev]);
   };
 
-  // 处理导出数据
   const handleExportData = () => {
-    // 1. 生成表格数据
     const data = maintenanceRecords.map(record => ({
       时间: record.time.split(' ')[0],
       设备: record.deviceId,
       操作人: record.operator,
       操作内容: record.action
     }));
-    // 2. 创建 worksheet 和 workbook
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, '维护记录');
-    // 3. 导出为 Excel 文件
     XLSX.writeFile(workbook, `维护记录_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
@@ -227,8 +328,7 @@ const BigScreen = ({ visible, onClose }) => {
               />
               {/* 可扩展摄像头切换等功能 */}
             </div>
-            {/* 设备事件流模块 */}
-            <EventFlow events={mockEventFlowData} />
+            <EventFlow events={packageEvents} packageStats={packageStats} />
           </div>
 
           {/* 中间区域 */}
@@ -249,7 +349,7 @@ const BigScreen = ({ visible, onClose }) => {
 
           {/* 右侧区域 */}
           <div className="right-panel">
-            <AlertPanel alerts={mockAlerts} onAlertClick={handleDeviceClick} />
+            <AlertPanel alerts={aiAlerts} onAlertClick={handleDeviceClick} />
             <OperationPanel
               maintenanceRecords={maintenanceRecords}
               onMaintenance={handleMaintenance}

@@ -189,6 +189,40 @@
   gap: 8px;
 }
 
+.package-stats-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.package-stat-item {
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: rgba(24, 144, 255, 0.04);
+}
+
+.package-stat-label {
+  color: #666;
+  font-size: 12px;
+}
+
+.package-stat-value {
+  margin-top: 2px;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.package-stat-value.success {
+  color: #52c41a;
+}
+
+.package-stat-value.warning {
+  color: #ff4d4f;
+}
+
 .event-flow-list {
   position: relative;
   padding-left: 20px;

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Button, Table, Space, Modal, Select, message, Input } from 'antd';
+import { Button, Modal, Select, message, Input } from 'antd';
 import { ToolOutlined, DownloadOutlined } from '@ant-design/icons';
 
 const OPERATOR_LIST = ['视觉算法工程师', '智能体开发工程师', '智能运维工程师', '智能制造工程师', ];
 
-const OperationPanel = ({ maintenanceRecords, onMaintenance, onExportData, selectedDevice, onAddMaintenance }) => {
+const OperationPanel = ({ maintenanceRecords, onExportData, selectedDevice, onAddMaintenance }) => {
   // 表格列定义
   const columns = [
     {
@@ -53,7 +53,7 @@ const OperationPanel = ({ maintenanceRecords, onMaintenance, onExportData, selec
     // 新维护记录
     const newRecord = {
       id: 'maint-' + Date.now(),
-      deviceId: selectedDevice?.id || '',
+      deviceId: selectedDevice?.deviceId || selectedDevice?.id || '',
       time: new Date().toLocaleString('zh-CN', { hour12: false }),
       operator: selectedOperator,
       action: actionText,
@@ -114,7 +114,8 @@ const OperationPanel = ({ maintenanceRecords, onMaintenance, onExportData, selec
               maxLength={30}
             />
           </div>
-          <div>设备：{selectedDevice?.name || selectedDevice?.deviceName || ''}</div>
+          <div>设备：{selectedDevice?.deviceName || selectedDevice?.name || ''}</div>
+          <div style={{ marginTop: 8 }}>故障：{selectedDevice?.summary || selectedDevice?.type || '无'}</div>
         </Modal>
         <Button
           icon={<DownloadOutlined />}

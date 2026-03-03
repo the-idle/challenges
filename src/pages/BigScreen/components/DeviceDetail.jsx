@@ -121,6 +121,10 @@ const DeviceDetail = ({ visible, device, onClose }) => {
             </Descriptions.Item>
             <Descriptions.Item label="当前温度">{device?.temperature}℃</Descriptions.Item>
             <Descriptions.Item label="振动强度">{device?.vibration} m/s²</Descriptions.Item>
+            <Descriptions.Item label="故障类型">{device?.type || '-'}</Descriptions.Item>
+            <Descriptions.Item label="诊断时间">{device?.diagnosisTime || '-'}</Descriptions.Item>
+            <Descriptions.Item label="根因分析" span={2}>{device?.rootCause || '-'}</Descriptions.Item>
+            <Descriptions.Item label="处置建议" span={2}>{device?.recommendation || '-'}</Descriptions.Item>
             <Descriptions.Item label="运行时长">168小时</Descriptions.Item>
           </Descriptions>
         </div>
