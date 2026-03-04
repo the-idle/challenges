@@ -134,6 +134,12 @@ const DeviceMap = () => {
       camera.updateProjectionMatrix();
     };
 
+    // 使用 ResizeObserver 监听容器大小变化
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+    resizeObserver.observe(container);
+
     handleResize();
     window.addEventListener('resize', handleResize);
 
@@ -155,6 +161,9 @@ const DeviceMap = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       if (frameRef.current) {
         cancelAnimationFrame(frameRef.current);
       }

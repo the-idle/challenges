@@ -11,13 +11,13 @@
 .realtime-video-container {
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Contain children */
-  background: rgba(10, 31, 60, 0.8);
+  overflow: hidden;
+  background: var(--bg-color-container);
   border-radius: 8px;
   padding: 16px;
   padding-top: 5px;
-  box-shadow: 0 0 15px rgba(0, 168, 255, 0.2);
-  border: 1px solid rgba(0, 168, 255, 0.2);
+  box-shadow: 0 0 15px var(--shadow-color);
+  border: 1px solid var(--border-color);
 }
 
 .metrics-section {
@@ -31,14 +31,14 @@
 /* Titles within .metrics-section and .realtime-video-container */
 .metrics-section .panel-title,
 .realtime-video-container .panel-title {
-  font-size: 16px; /* Consistent with .event-flow-title */
-  font-weight: bold; /* Consistent with .event-flow-title */
-  color: #4fc3f7; /* Consistent with .event-flow-title */
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--panel-title-color);
   display: flex;
   align-items: center;
-  gap: 8px; /* Consistent with .event-flow-title */
-  flex-shrink: 0; /* Prevent title from shrinking */
-  text-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+  gap: 8px;
+  flex-shrink: 0;
+  text-shadow: 0 0 10px var(--shadow-color);
 }
 
 /* Title for .event-flow-container (ensure it doesn't shrink) */
@@ -67,12 +67,12 @@
 
 /* 操作面板样式 */
 .operation-panel-container {
-  background: rgba(10, 31, 60, 0.8);
-  border: 1px solid rgba(0, 168, 255, 0.2);
+  background: var(--bg-color-container);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 16px;
   height: 100%;
-  box-shadow: 0 0 15px rgba(0, 168, 255, 0.2);
+  box-shadow: 0 0 15px var(--shadow-color);
   display: flex;
   flex-direction: column;
 }
@@ -135,12 +135,12 @@
 
 .operation-table .ant-table {
   background: transparent;
-  border: 1px solid rgba(240, 240, 240, 0.8);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
 .operation-table .ant-table-header {
-  background: #fff !important;
+  background: var(--table-header-bg) !important;
   overflow: hidden !important;
   position: sticky !important;
   top: 0;
@@ -148,36 +148,37 @@
 }
 
 .operation-table .ant-table-thead > tr > th {
-  background: rgba(24, 144, 255, 0.1) !important;
-  color: #333;
+  background: var(--table-header-bg) !important;
+  color: var(--table-header-text);
   font-weight: 500;
-  border: 1px solid rgba(240, 240, 240, 0.8);
-  border-bottom: 2px solid #1890ff;
+  border: 1px solid var(--table-row-border);
+  border-bottom: 2px solid var(--primary-color);
   padding: 12px 16px;
 }
 
 .operation-table .ant-table-tbody > tr > td {
   background: transparent;
-  border: 1px solid rgba(240, 240, 240, 0.8);
+  border: 1px solid var(--table-row-border);
   padding: 12px 16px;
   transition: all 0.3s ease;
+  color: var(--text-color);
 }
 
 .operation-table .ant-table-tbody > tr:hover > td {
-  background: rgba(24, 144, 255, 0.05) !important;
+  background: var(--table-row-hover) !important;
 }
 
 .operation-table .ant-table-tbody > tr:nth-child(even) > td {
-  background: rgba(250, 250, 250, 0.5);
+  background: var(--table-row-even);
 }
 
 /* 设备事件流样式 */
 .event-flow-container {
-  background: rgba(10, 31, 60, 0.8);
-  border: 1px solid rgba(0, 168, 255, 0.2);
+  background: var(--bg-color-container);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 16px;
-  box-shadow: 0 0 15px rgba(0, 168, 255, 0.2);
+  box-shadow: 0 0 15px var(--shadow-color);
   display: flex;
   flex-direction: column;
   flex: 4; /* Added for 3:3:4 ratio */
@@ -187,11 +188,11 @@
 .event-flow-title {
   font-size: 16px;
   font-weight: bold;
-  color: #4fc3f7;
+  color: var(--panel-title-color);
   display: flex;
   align-items: center;
   gap: 8px;
-  text-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+  text-shadow: 0 0 10px var(--shadow-color);
 }
 
 .package-stats-grid {
@@ -202,23 +203,23 @@
 }
 
 .package-stat-item {
-  border: 1px solid rgba(0, 168, 255, 0.2);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 8px 10px;
-  background: rgba(24, 144, 255, 0.1);
+  background: var(--stat-item-bg);
 }
 
 .package-stat-label {
-  color: #a6b0c3;
+  color: var(--text-color-secondary);
   font-size: 12px;
 }
 
 .package-stat-value {
   margin-top: 2px;
-  color: #fff;
+  color: var(--text-color);
   font-size: 18px;
   font-weight: 600;
-  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+  text-shadow: 0 0 5px var(--shadow-color);
 }
 
 .package-stat-value.success {
@@ -242,17 +243,17 @@
   position: relative;
   padding: 12px 16px;
   margin-bottom: 16px;
-  background: rgba(13, 43, 85, 0.6);
+  background: var(--card-bg);
   border-radius: 6px;
-  border: 1px solid rgba(0, 168, 255, 0.1);
+  border: 1px solid var(--border-color);
   transition: all 0.3s ease;
 }
 
 .event-flow-item:hover {
   transform: translateX(4px);
-  background: rgba(13, 43, 85, 0.9);
-  border-color: rgba(0, 168, 255, 0.4);
-  box-shadow: 0 0 10px rgba(0, 168, 255, 0.2);
+  background: var(--card-bg-hover);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 10px var(--shadow-color);
 }
 
 .event-flow-item::before {
@@ -280,7 +281,7 @@
 
 .event-flow-item-time {
   font-size: 14px;
-  color: #4fc3f7;
+  color: var(--primary-color);
   margin-bottom: 4px;
 }
 
@@ -288,7 +289,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e0e0e0;
+  color: var(--text-color);
 }
 
 .event-flow-line {
@@ -297,27 +298,27 @@
   top: 0;
   bottom: 16px;
   width: 1px;
-  background: rgba(0, 168, 255, 0.2);
+  background: var(--border-color);
   z-index: 0;
 }
 
 /* 告警卡片样式 */
 .alert-item {
-  background: rgba(13, 43, 85, 0.6);
+  background: var(--card-bg);
   border-radius: 8px;
   padding: 12px 16px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px var(--metric-shadow);
   transition: all 0.3s ease;
   cursor: pointer;
-  border: 1px solid rgba(0, 168, 255, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .alert-item:hover {
   transform: translateY(-2px);
-  background: rgba(13, 43, 85, 0.9);
-  border-color: rgba(0, 168, 255, 0.4);
-  box-shadow: 0 0 15px rgba(0, 168, 255, 0.3);
+  background: var(--card-bg-hover);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 15px var(--shadow-color);
 }
 
 .alert-item.high-alert {
@@ -502,23 +503,23 @@
 }
 
 .header-title h1 {
-  color: #fff;
+  color: var(--chart-title-color);
   margin: 0;
   font-size: 28px;
   font-weight: bold;
   margin-left: 8px;
   letter-spacing: 2px;
-  text-shadow: 0 0 10px rgba(0, 168, 255, 0.8), 0 0 20px rgba(0, 168, 255, 0.4);
+  text-shadow: 0 0 10px var(--shadow-color), 0 0 20px var(--shadow-color);
   font-family: 'Microsoft YaHei', sans-serif;
 }
 
 .header-time {
   font-size: 18px;
   font-weight: normal;
-  color: #4fc3f7;
+  color: var(--primary-color);
   display: flex;
   align-items: center;
-  text-shadow: 0 0 5px rgba(79, 195, 247, 0.5);
+  text-shadow: 0 0 5px var(--shadow-color);
 }
 
 .header-status {
@@ -529,7 +530,7 @@
 
 .header-status-text {
   margin-right: 5px;
-  color: #a6b0c3 !important;
+  color: var(--text-color-secondary) !important;
 }
 
 /* 内容区域样式 */
@@ -635,13 +636,13 @@
 .time-series-container {
   height: 100%;
   padding: 16px;
-  background: rgba(10, 31, 60, 0.8);
-  border: 1px solid rgba(0, 168, 255, 0.2);
+  background: var(--bg-color-container);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   margin-bottom: 0;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 15px rgba(0, 168, 255, 0.2);
+  box-shadow: 0 0 15px var(--shadow-color);
 }
 
 .chart-header {
@@ -654,13 +655,13 @@
 .chart-title {
   font-size: 18px;
   font-weight: bold;
-  color: #fff;
+  color: var(--chart-title-color);
   margin: 0;
   letter-spacing: 1px;
   position: relative;
   display: inline-block;
   padding-left: 12px;
-  text-shadow: 0 0 10px rgba(0, 168, 255, 0.5);
+  text-shadow: 0 0 10px var(--shadow-color);
 }
 
 .chart-title::before {
@@ -671,9 +672,9 @@
   transform: translateY(-50%);
   width: 4px;
   height: 18px;
-  background: #00a8ff;
+  background: var(--primary-color);
   border-radius: 2px;
-  box-shadow: 0 0 8px #00a8ff;
+  box-shadow: 0 0 8px var(--primary-color);
 }
 
 .time-range-selector {
@@ -681,16 +682,16 @@
   gap: 8px;
   margin-bottom: 12px;
   padding: 4px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--stat-item-bg);
   border-radius: 4px;
-  border: 1px solid rgba(0, 168, 255, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .time-range-selector button {
   padding: 4px 12px;
-  border: 1px solid rgba(0, 168, 255, 0.3);
-  background: rgba(0, 168, 255, 0.1);
-  color: #a6b0c3;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-color-secondary);
   cursor: pointer;
   border-radius: 4px;
   transition: all 0.3s;
@@ -700,10 +701,10 @@
 
 .time-range-selector button:hover,
 .time-range-selector button.active {
-  background: rgba(0, 168, 255, 0.3);
+  background: var(--primary-color);
   color: #fff;
-  border-color: #00a8ff;
-  box-shadow: 0 0 10px rgba(0, 168, 255, 0.3);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 10px var(--shadow-color);
 }
 
 /* 新增flex布局样式 */
@@ -973,7 +974,7 @@
 }
 
 .metric-card {
-  background: rgba(13, 43, 85, 0.6);
+  background: var(--metric-bg);
   border-radius: 8px;
   padding: 16px;
   display: flex;
@@ -984,15 +985,15 @@
   position: relative;
   overflow: hidden;
   transition: all 0.3s ease;
-  border: 1px solid rgba(0, 168, 255, 0.1);
-  box-shadow: 0 0 10px rgba(0, 168, 255, 0.1);
+  border: 1px solid var(--metric-border);
+  box-shadow: 0 0 10px var(--metric-shadow);
 }
 
 .metric-card:hover {
   transform: translateY(-2px);
-  background: rgba(13, 43, 85, 0.9);
-  border-color: rgba(0, 168, 255, 0.4);
-  box-shadow: 0 0 15px rgba(0, 168, 255, 0.3);
+  background: var(--card-bg-hover);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 15px var(--shadow-color);
 }
 
 .metric-header {
@@ -1011,11 +1012,11 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(0, 168, 255, 0.1);
-  color: #4fc3f7;
+  background: var(--stat-item-bg);
+  color: var(--primary-color);
   margin-right: 8px;
-  border: 1px solid rgba(0, 168, 255, 0.2);
-  box-shadow: 0 0 5px rgba(0, 168, 255, 0.2);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 0 5px var(--shadow-color);
 }
 
 .metric-title {
@@ -1023,7 +1024,7 @@
   text-align: center;
   line-height: 1.2;
   flex: 1;
-  color: #a6b0c3;
+  color: var(--text-color-secondary);
   font-weight: 600;
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -1041,10 +1042,10 @@
 .metric-value {
   font-size: 24px;
   font-weight: bold;
-  color: #fff;
+  color: var(--text-color);
   margin: 0;
   line-height: 1;
-  text-shadow: 0 0 10px rgba(0, 168, 255, 0.5);
+  text-shadow: 0 0 10px var(--shadow-color);
   font-family: 'Digital', sans-serif;
 }
 
@@ -1097,9 +1098,9 @@
 .device-name {
   font-weight: 600;
   font-size: 13px;
-  color: #fff;
+  color: var(--text-color);
   margin-right: 8px;
-  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+  text-shadow: 0 0 5px var(--shadow-color);
 }
 
 .alert-tag {
@@ -1133,7 +1134,7 @@
 
 .alert-item-content {
   font-size: 12px;
-  color: #a6b0c3;
+  color: var(--text-color-secondary);
   margin-bottom: 0;
   width: 100%;
   display: flex;
@@ -1150,7 +1151,7 @@
 .alert-type {
   display: inline-block;
   font-weight: 500;
-  color: #e0e0e0;
+  color: var(--text-color);
 }
 
 .alert-item-time {
@@ -1169,14 +1170,23 @@
   --border-color: rgba(0, 168, 255, 0.2);
   --shadow-color: rgba(0, 168, 255, 0.2);
   --primary-color: #4fc3f7;
+  --header-bg: linear-gradient(to bottom, rgba(10, 31, 60, 0.95), rgba(10, 31, 60, 0.6));
+  --modal-bg-color: #050d19;
+  --modal-close-color: #4fc3f7;
+  --modal-close-bg: rgba(13, 43, 85, 0.6);
+  --stat-item-bg: rgba(24, 144, 255, 0.1);
+  --chart-title-color: #fff;
+  --metric-bg: rgba(13, 43, 85, 0.6);
+  --metric-border: rgba(0, 168, 255, 0.1);
+  --metric-shadow: rgba(0, 168, 255, 0.1);
+  --table-header-bg: rgba(0, 168, 255, 0.1);
+  --table-row-hover: rgba(0, 168, 255, 0.05);
+  --table-row-even: rgba(250, 250, 250, 0.05);
+  --table-row-border: rgba(0, 168, 255, 0.1);
+  --table-header-text: #4fc3f7;
   --panel-title-color: #4fc3f7;
   --card-bg: rgba(13, 43, 85, 0.6);
   --card-bg-hover: rgba(13, 43, 85, 0.9);
-  --table-header-bg: rgba(0, 168, 255, 0.1);
-  --table-header-text: #e6f7ff;
-  --table-row-border: rgba(0, 168, 255, 0.12);
-  --table-row-hover: rgba(0, 168, 255, 0.08);
-  --table-row-even: rgba(13, 43, 85, 0.45);
 }
 
 .big-screen-container[data-theme='light'] {
@@ -1190,11 +1200,14 @@
   --panel-title-color: #1677ff;
   --card-bg: #f8fbff;
   --card-bg-hover: #eef5ff;
-  --table-header-bg: #f3f8ff;
-  --table-header-text: #1f1f1f;
-  --table-row-border: #e6eefb;
-  --table-row-hover: #edf5ff;
-  --table-row-even: #f9fcff;
+  --table-header-bg: #f5faff;
+  --table-row-hover: rgba(24, 144, 255, 0.06);
+  --table-row-even: rgba(250, 250, 250, 0.5);
+  --table-row-border: #e6eaf0;
+  --table-header-text: #333333;
+  --metric-bg: #ffffff;
+  --metric-border: #f0f0f0;
+  --metric-shadow: rgba(0, 0, 0, 0.05);
 }
 
 .big-screen-container {
