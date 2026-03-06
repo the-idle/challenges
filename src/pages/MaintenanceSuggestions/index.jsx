@@ -15,19 +15,18 @@ import {
   Input
 } from 'antd';
 import { ExclamationCircleOutlined, ToolOutlined, HistoryOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons';
-import { mockMaintenanceSuggestions, mockMaintenanceDetail, mockMaintenanceHistory } from './mockData';
+import { mockMaintenanceSuggestions, mockMaintenanceHistory } from './mockData';
 import MaintenanceDetailModal from './components/MaintenanceDetailModal';
 import MaintenanceScheduleModal from './components/MaintenanceScheduleModal'; // 引入排班弹窗组件
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
 
 const { Title } = Typography;
 
 const MaintenanceSuggestions = () => {
   const [suggestions, setSuggestions] = useState(mockMaintenanceSuggestions);
-  const [maintenanceHistory, setMaintenanceHistory] = useState(mockMaintenanceHistory);
+  const [maintenanceHistory] = useState(mockMaintenanceHistory);
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
   const [maintenanceDetail, setMaintenanceDetail] = useState(null);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);

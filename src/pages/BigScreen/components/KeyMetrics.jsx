@@ -97,11 +97,12 @@ const KeyMetrics = ({ metrics }) => {
 
   return (
     <div className="key-metrics-container">
-      {animatedMetrics.map((metric) => {
+      {animatedMetrics.map((metric, index) => {
         const status = getStatusClass(metric);
         const progressPercent = metric.title.includes('率')
           ? metric.animatedValue
           : Math.min(100, (metric.animatedValue / metric.threshold) * 100);
+        const safeProgressPercent = Math.max(0, Math.min(100, progressPercent));
 
         // 确定指标的图标
         const getMetricIcon = () => {
@@ -128,7 +129,8 @@ const KeyMetrics = ({ metrics }) => {
         return (
           <div
             key={metric.id}
-            className="metric-card"
+            className="metric-card metric-card-enter"
+            style={{ animationDelay: `${index * 120}ms` }}
             title={`阈值: ${metric.threshold}${metric.unit}`}
           >
             <div className="metric-header">
@@ -145,7 +147,7 @@ const KeyMetrics = ({ metrics }) => {
 
             <Progress
               className="metric-progress"
-              percent={progressPercent}
+              percent={safeProgressPercent}
               size="small"
               strokeColor={getProgressColor(status)}
               trailColor="rgba(255, 255, 255, 0.1)"

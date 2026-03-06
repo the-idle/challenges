@@ -15,24 +15,6 @@ import Login from './pages/Login';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-
-  React.useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsLoggedIn(!!token);
-
-    const handleStorageChange = () => {
-      const token = localStorage.getItem('token');
-      setIsLoggedIn(!!token);
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
   return (
     <ConfigProvider
       locale={zhCN}

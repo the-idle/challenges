@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Row,
   Col,
@@ -33,7 +33,7 @@ import {
   QuestionCircleOutlined,
   DatabaseOutlined
 } from '@ant-design/icons';
-import { mockSystemSettings, mockThresholdSettings, mockUserList } from './data.js';
+import { mockThresholdSettings, mockUserList } from './data.js';
 import './index.css';
 
 const { TabPane } = Tabs;
@@ -303,7 +303,6 @@ const Settings = () => {
     editing,
     dataIndex,
     title,
-    record,
     children,
     ...restProps
   }) => {

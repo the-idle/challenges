@@ -30,7 +30,6 @@ const IndustrialQA = () => {
   const [question, setQuestion] = useState('');
   const [qaList, setQAList] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchHistory, setSearchHistory] = useState(false);
   const messageEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -258,81 +257,7 @@ const IndustrialQA = () => {
       <div className="qa-content">
         <div className="qa-main">
           <Card className="qa-list-card" title="问答历史" size="small">
-            {qaList.length > 0 ? (
-              <List
-                dataSource={qaList}
-                renderItem={(item) => (
-                  <div className="qa-item" key={item.id}>
-                    <div className="question-container">
-                      <div className="avatar-container">
-                        <Avatar size="small" icon={<UserOutlined />} />
-                      </div>
-                      <div className="content-container">
-                        <div className="question-header">
-                          <Typography.Text strong>您的问题</Typography.Text>
-                          <Typography.Text type="secondary" style={{ fontSize: '12px' }}>{item.timestamp}</Typography.Text>
-                        </div>
-                        <div className="question-content">
-                          <Typography.Text style={{ margin: 0 }}>{item.question}</Typography.Text>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="answer-container">
-                      <div className="avatar-container">
-                        <Avatar size="small" icon={<RobotOutlined />} style={{ backgroundColor: '#1890ff' }} />
-                      </div>
-                      <div className="content-container">
-                        <div className="answer-header">
-                          <Typography.Text strong>智能助手</Typography.Text>
-                          <Space size={[0, 4]}>
-                            {item.tags.map((tag, index) => (
-                              <Tag key={index} color="blue" style={{ fontSize: '12px', padding: '0 4px' }}>{tag}</Tag>
-                            ))}
-                          </Space>
-                        </div>
-                        <div className="answer-content">
-                          <Typography.Text style={{ margin: 0 }}>
-                            {loading && item.id === qaList[qaList.length - 1].id ? (
-                              <>
-                                <Spin size="small" style={{ marginRight: '8px' }} />
-                                正在思考中...
-                              </>
-                            ) : (
-                              <ReactMarkdown
-                                components={{
-                                  p: ({ children }) => <p style={{ margin: '0 0 8px 0' }}>{children}</p>,
-                                  ul: ({ children }) => <ul style={{ margin: '0 0 8px 0', paddingLeft: '20px' }}>{children}</ul>,
-                                  ol: ({ children }) => <ol style={{ margin: '0 0 8px 0', paddingLeft: '20px' }}>{children}</ol>,
-                                  li: ({ children }) => <li style={{ margin: '4px 0' }}>{children}</li>,
-                                  code: ({ children }) => <code style={{
-                                    background: '#f5f5f5',
-                                    padding: '2px 4px',
-                                    borderRadius: '3px',
-                                    fontFamily: 'monospace'
-                                  }}>{children}</code>,
-                                  pre: ({ children }) => <pre style={{
-                                    background: '#f5f5f5',
-                                    padding: '8px',
-                                    borderRadius: '4px',
-                                    overflow: 'auto',
-                                    margin: '8px 0'
-                                  }}>{children}</pre>
-                                }}
-                              >
-                                {item.answer}
-                              </ReactMarkdown>
-                            )}
-                          </Typography.Text>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              />
-            ) : (
-              <Empty description="暂无问答记录" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-            )}
+            {renderQAList()}
             <div ref={messageEndRef} />
           </Card>
 

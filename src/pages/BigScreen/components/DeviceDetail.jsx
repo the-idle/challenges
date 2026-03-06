@@ -1,10 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Modal, Tabs, Descriptions, Card, Timeline } from 'antd';
 import * as echarts from 'echarts';
 
 const DeviceDetail = ({ visible, device, onClose }) => {
   // 模拟历史数据
-  const historyData = [
+  const historyData = useMemo(() => [
     { time: '08:00', temperature: 45, vibration: 2.1 },
     { time: '09:00', temperature: 47, vibration: 2.3 },
     { time: '10:00', temperature: 46, vibration: 2.2 },
@@ -12,7 +12,7 @@ const DeviceDetail = ({ visible, device, onClose }) => {
     { time: '12:00', temperature: 50, vibration: 2.6 },
     { time: '13:00', temperature: 49, vibration: 2.5 },
     { time: '14:00', temperature: 47, vibration: 2.3 },
-  ];
+  ], []);
 
   // 模拟维护记录
   const maintenanceRecords = [
@@ -122,10 +122,10 @@ const DeviceDetail = ({ visible, device, onClose }) => {
             <Descriptions.Item label="当前温度">{device?.temperature}℃</Descriptions.Item>
             <Descriptions.Item label="振动强度">{device?.vibration} m/s²</Descriptions.Item>
             <Descriptions.Item label="故障类型">{device?.type || '-'}</Descriptions.Item>
-            <Descriptions.Item label="诊断时间">{device?.diagnosisTime || '-'}</Descriptions.Item>
+            <Descriptions.Item label="诊断时间" span={2}>{device?.diagnosisTime || '-'}</Descriptions.Item>
             <Descriptions.Item label="根因分析" span={2}>{device?.rootCause || '-'}</Descriptions.Item>
             <Descriptions.Item label="处置建议" span={2}>{device?.recommendation || '-'}</Descriptions.Item>
-            <Descriptions.Item label="运行时长">168小时</Descriptions.Item>
+            <Descriptions.Item label="运行时长" span={2}>168小时</Descriptions.Item>
           </Descriptions>
         </div>
       ),

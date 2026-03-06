@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { GlobalOutlined } from '@ant-design/icons';
+import { Button, Space } from 'antd';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -19,18 +20,67 @@ const DeviceMap = () => {
     size: new THREE.Vector3(),
     scale: 1
   });
-  const [scaleMultiplier, setScaleMultiplier] = useState(3);
-  const [cameraDistance, setCameraDistance] = useState(1.62);
-  const scaleMultiplierRef = useRef(scaleMultiplier);
-  const cameraDistanceRef = useRef(cameraDistance);
+  const scaleMultiplierRef = useRef(3);
+  const cameraDistanceRef = useRef(1.62);
+  const animationEnabledRef = useRef(true);
+  const hasAnimationsRef = useRef(false);
+  const alarmEnabledRef = useRef(false);
+  const alarmTargetRef = useRef(null);
+  const alarmMaterialsRef = useRef([]);
+  const alarmMaterialBackupRef = useRef([]);
+  const alarmLightRef = useRef(null);
+  const alarmPhaseRef = useRef(0);
+  const tempVectorRef = useRef(new THREE.Vector3());
+  const isVisibleRef = useRef(!document.hidden);
+  const [isAnimating, setIsAnimating] = useState(true);
+  const [isAlarmActive, setIsAlarmActive] = useState(false);
 
-  useEffect(() => {
-    scaleMultiplierRef.current = scaleMultiplier;
-  }, [scaleMultiplier]);
+  const clearAlarmEffect = useCallback(() => {
+    alarmMaterialsRef.current.forEach((material, index) => {
+      const backup = alarmMaterialBackupRef.current[index];
+      if (!material || !backup) {
+        return;
+      }
+      if (material.emissive && backup.emissive) {
+        material.emissive.copy(backup.emissive);
+        material.emissiveIntensity = backup.emissiveIntensity;
+      }
+      if (material.color && backup.color) {
+        material.color.copy(backup.color);
+      }
+    });
+    if (alarmLightRef.current) {
+      alarmLightRef.current.visible = false;
+      alarmLightRef.current.intensity = 0;
+    }
+  }, []);
 
-  useEffect(() => {
-    cameraDistanceRef.current = cameraDistance;
-  }, [cameraDistance]);
+  const handlePlayAnimation = useCallback(() => {
+    animationEnabledRef.current = true;
+    if (mixerRef.current) {
+      mixerRef.current.timeScale = 1;
+    }
+    setIsAnimating(true);
+  }, []);
+
+  const handlePauseAnimation = useCallback(() => {
+    animationEnabledRef.current = false;
+    if (mixerRef.current) {
+      mixerRef.current.timeScale = 0;
+    }
+    setIsAnimating(false);
+  }, []);
+
+  const handleEnableAlarm = useCallback(() => {
+    alarmEnabledRef.current = true;
+    setIsAlarmActive(true);
+  }, []);
+
+  const handleDisableAlarm = useCallback(() => {
+    alarmEnabledRef.current = false;
+    clearAlarmEffect();
+    setIsAlarmActive(false);
+  }, [clearAlarmEffect]);
 
   const applyScale = () => {
     if (!modelRef.current) {
@@ -68,7 +118,7 @@ const DeviceMap = () => {
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
     renderer.domElement.style.borderRadius = '4px';
@@ -90,8 +140,12 @@ const DeviceMap = () => {
     directionalLight.position.set(2, 3, 4);
     scene.add(ambientLight, directionalLight);
 
+    const alarmLight = new THREE.PointLight(0xff2f2f, 0, 2.8, 2);
+    alarmLight.visible = false;
+    scene.add(alarmLight);
+    alarmLightRef.current = alarmLight;
+
     let model = null;
-    let hasAnimations = false;
     const loader = new GLTFLoader();
     loader.load('/model/all.glb', (gltf) => {
       model = gltf.scene;
@@ -111,8 +165,35 @@ const DeviceMap = () => {
       baseSizeRef.current = size.clone();
       applyScale();
 
+      const nameMatcher = /(motor|fan|pump|arm|joint|gear|bearing|engine|电机|关节|机械臂|传动)/i;
+      let selectedMesh = null;
+      model.traverse((node) => {
+        if (!selectedMesh && node.isMesh && nameMatcher.test(node.name || '')) {
+          selectedMesh = node;
+        }
+      });
+      if (!selectedMesh) {
+        model.traverse((node) => {
+          if (!selectedMesh && node.isMesh) {
+            selectedMesh = node;
+          }
+        });
+      }
+      if (selectedMesh) {
+        const originalMaterials = Array.isArray(selectedMesh.material) ? selectedMesh.material : [selectedMesh.material];
+        const clonedMaterials = originalMaterials.map((material) => (material?.clone ? material.clone() : material));
+        selectedMesh.material = Array.isArray(selectedMesh.material) ? clonedMaterials : clonedMaterials[0];
+        alarmTargetRef.current = selectedMesh;
+        alarmMaterialsRef.current = clonedMaterials.filter(Boolean);
+        alarmMaterialBackupRef.current = alarmMaterialsRef.current.map((material) => ({
+          emissive: material.emissive?.clone?.() || null,
+          emissiveIntensity: typeof material.emissiveIntensity === 'number' ? material.emissiveIntensity : 0,
+          color: material.color?.clone?.() || null
+        }));
+      }
+
       if (gltf.animations && gltf.animations.length > 0) {
-        hasAnimations = true;
+        hasAnimationsRef.current = true;
         const mixer = new THREE.AnimationMixer(model);
         gltf.animations.forEach((clip) => {
           const action = mixer.clipAction(clip);
@@ -144,28 +225,97 @@ const DeviceMap = () => {
     window.addEventListener('resize', handleResize);
 
     const animate = () => {
+      if (!isVisibleRef.current) {
+        frameRef.current = null;
+        return;
+      }
       frameRef.current = requestAnimationFrame(animate);
       const delta = clockRef.current.getDelta();
-      if (mixerRef.current) {
+      if (animationEnabledRef.current && mixerRef.current) {
         mixerRef.current.update(delta);
-      } else if (!hasAnimations && model) {
+      } else if (animationEnabledRef.current && !hasAnimationsRef.current && model) {
         model.rotation.y += delta * 0.3;
       }
-      if (controlsRef.current) {
+      if (alarmEnabledRef.current && alarmTargetRef.current) {
+        alarmPhaseRef.current += delta * 7;
+        const pulse = (Math.sin(alarmPhaseRef.current) + 1) / 2;
+        alarmMaterialsRef.current.forEach((material) => {
+          if (material.emissive) {
+            material.emissive.setRGB(1, 0, 0);
+            material.emissiveIntensity = 0.8 + pulse * 1.4;
+          } else if (material.color) {
+            material.color.setRGB(0.65 + pulse * 0.35, 0, 0);
+          }
+        });
+        if (alarmLightRef.current) {
+          alarmTargetRef.current.getWorldPosition(tempVectorRef.current);
+          alarmLightRef.current.position.copy(tempVectorRef.current);
+          alarmLightRef.current.visible = true;
+          alarmLightRef.current.intensity = 1.4 + pulse * 2;
+        }
+      } else {
+        clearAlarmEffect();
+      }
+      if (controlsRef.current?.enabled) {
         controlsRef.current.update();
       }
       renderer.render(scene, camera);
     };
 
-    animate();
+    const startAnimation = () => {
+      if (frameRef.current) {
+        return;
+      }
+      clockRef.current.getDelta();
+      animate();
+    };
+
+    const stopAnimation = () => {
+      if (!frameRef.current) {
+        return;
+      }
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    };
+
+    const handleVisibilityChange = () => {
+      isVisibleRef.current = !document.hidden;
+      if (isVisibleRef.current) {
+        startAnimation();
+      } else {
+        stopAnimation();
+      }
+    };
+
+    startAnimation();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const handleKeyDown = (event) => {
+      const key = event.key.toLowerCase();
+      if (key === '1') {
+        handlePlayAnimation();
+      } else if (key === '2') {
+        handlePauseAnimation();
+      } else if (key === '3') {
+        handleEnableAlarm();
+      } else if (key === '4') {
+        handleDisableAlarm();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      stopAnimation();
+      clearAlarmEffect();
+      alarmLightRef.current = null;
+      alarmTargetRef.current = null;
+      alarmMaterialsRef.current = [];
+      alarmMaterialBackupRef.current = [];
       if (resizeObserver) {
         resizeObserver.disconnect();
-      }
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current);
       }
       if (rendererRef.current) {
         rendererRef.current.dispose();
@@ -177,15 +327,15 @@ const DeviceMap = () => {
         container.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [clearAlarmEffect, handleDisableAlarm, handleEnableAlarm, handlePauseAnimation, handlePlayAnimation]);
 
   useEffect(() => {
     applyScale();
-  }, [scaleMultiplier]);
+  }, []);
 
   useEffect(() => {
     applyCameraDistance();
-  }, [cameraDistance]);
+  }, []);
 
   return (
     <div className="time-series-container" style={{ height: '100%', position: 'relative' }}>
@@ -194,6 +344,12 @@ const DeviceMap = () => {
           <GlobalOutlined style={{ marginRight: '8px', fontSize: '18px', color: 'var(--primary-color)' }} />
           柔性智能分拣系统模型
         </div>
+        <Space size={6} wrap>
+          <Button size="small" type={isAnimating ? 'primary' : 'default'} onClick={handlePlayAnimation}>播放动画</Button>
+          <Button size="small" onClick={handlePauseAnimation}>暂停动画</Button>
+          <Button size="small" danger type={isAlarmActive ? 'primary' : 'default'} onClick={handleEnableAlarm}>开启警报</Button>
+          <Button size="small" onClick={handleDisableAlarm}>关闭警报</Button>
+        </Space>
       </div>
       <div className="device-map" style={{ height: 'calc(100% - 30px)', position: 'relative' }}>
         <div ref={containerRef} style={{ width: '100%', height: '100%' }} />

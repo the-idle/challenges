@@ -15,17 +15,16 @@ const Header = ({ title, currentTime, apiStatus, isDarkMode, onThemeChange }) =>
 
       <div className="header-status">
         <div className="theme-switcher">
-          <span className="header-status-text">主题:</span>
           <Switch
             checked={isDarkMode}
             onChange={onThemeChange}
-            checkedChildren="暗"
-            unCheckedChildren="亮"
-            size="small"
+            checkedChildren="🌙"
+            unCheckedChildren="☀️"
+            className="custom-theme-switch"
           />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span className="header-status-text">API连接状态:</span>
+        <div className="api-status">
+          <span className="header-status-text">API:</span>
           {apiStatus === 'connected' ? (
             <CheckCircleOutlined style={{ color: '#52C41A', fontSize: '18px', marginLeft: '5px' }} />
           ) : (

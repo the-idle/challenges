@@ -30,7 +30,6 @@ import * as echarts from 'echarts';
 import { mockDeviceList, mockHistoricalData } from './data.js';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 
 const { Title, Text } = Typography;
@@ -41,7 +40,7 @@ const HistoricalData = () => {
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState([]);
   const [timeGranularity, setTimeGranularity] = useState('hour');
-  const [deviceList, setDeviceList] = useState(mockDeviceList);
+  const [deviceList] = useState(mockDeviceList);
   const [selectedDevices, setSelectedDevices] = useState(mockDeviceList.slice(0, 5).map(d => d.id));
   const [dataType, setDataType] = useState('temperature');
   const [historicalData, setHistoricalData] = useState(mockHistoricalData);
@@ -54,13 +53,6 @@ const HistoricalData = () => {
   const scatterChartRef = useRef(null);
   const tableRef = useRef(null);
 
-  // 修改设备选择处理函数
-  const handleDeviceChange = (deviceId) => {
-    const device = deviceList.find(d => d.id === deviceId);
-    setSelectedDevices([device.id]);
-    setHistoricalData(mockHistoricalData); // 使用静态数据
-  };
-
   // 渲染图表
   useEffect(() => {
     if (!loading && historicalData && chartRef.current) {
@@ -68,7 +60,7 @@ const HistoricalData = () => {
 
       // 折线图或柱状图配置
       if (chartType === 'line' || chartType === 'bar') {
-        const series = selectedDevices.map((deviceId, index) => {
+        const series = selectedDevices.map((deviceId) => {
           const deviceName = deviceList.find(d => d.id === deviceId)?.name || deviceId;
           return {
             name: deviceName,
@@ -359,7 +351,7 @@ const HistoricalData = () => {
   };
 
   // 准备导出数据
-  const prepareExportData = (exportContent) => {
+  const prepareExportData = () => {
     const data = [];
     const headers = ['时间'];
 
@@ -372,7 +364,7 @@ const HistoricalData = () => {
     // 添加数据行
     historicalData.timestamps.forEach((timestamp, index) => {
       const row = [timestamp];
-      selectedDevices.forEach(deviceId => {
+      selectedDevices.forEach(() => {
         row.push(historicalData.metrics[dataType][index]?.value || '--');
       });
       data.push(row);
@@ -402,8 +394,8 @@ const HistoricalData = () => {
   };
 
   // 导出Excel
-  const exportToExcel = (fileName, exportContent) => {
-    const { headers, data } = prepareExportData(exportContent);
+  const exportToExcel = (fileName) => {
+    const { headers, data } = prepareExportData();
 
     // 创建工作簿
     const wb = XLSX.utils.book_new();
@@ -421,7 +413,7 @@ const HistoricalData = () => {
   };
 
   // 导出PDF
-  const exportToPDF = async (fileName, exportContent) => {
+  const exportToPDF = async (fileName) => {
     try {
       // 创建临时容器
       const container = document.createElement('div');
@@ -438,7 +430,7 @@ const HistoricalData = () => {
       `;
 
       // 添加历史数据表格
-      const { headers, data } = prepareExportData(exportContent);
+      const { headers, data } = prepareExportData();
       const tableHtml = `
         <div style="margin-bottom: 30px;">
           <h2 style="margin-bottom: 15px;">历史数据</h2>
@@ -547,13 +539,13 @@ const HistoricalData = () => {
 
   // 完成导出
   const handleExportSubmit = (values) => {
-    const { exportType, fileName, exportContent } = values;
+    const { exportType, fileName } = values;
 
     try {
       if (exportType === 'excel') {
-        exportToExcel(fileName, exportContent);
+        exportToExcel(fileName);
       } else {
-        exportToPDF(fileName, exportContent);
+        exportToPDF(fileName);
       }
       setExportVisible(false);
       message.success('数据导出成功');
@@ -642,7 +634,7 @@ const HistoricalData = () => {
       }
       pdf.save(`${fileName}.pdf`);
       message.success('PDF导出成功');
-    } catch (error) {
+    } catch {
       message.error('PDF导出失败，请重试');
     }
   };
@@ -657,14 +649,14 @@ const HistoricalData = () => {
         await exportFaultToPDF(fileName);
       }
       setFaultExportVisible(false);
-    } catch (e) {
+    } catch {
       message.error('导出失败');
     }
   };
 
   // 历史数据表格导出Excel
   const exportTableToExcel = (fileName) => {
-    const { headers, data } = prepareExportData(['timestamps', dataType]); // 复用已有逻辑
+    const { headers, data } = prepareExportData(); // 复用已有逻辑
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
     ws['!cols'] = headers.map(() => ({ wch: 15 }));
@@ -676,7 +668,7 @@ const HistoricalData = () => {
   const exportTableToPDF = async (fileName) => {
     try {
       // 1. 构造表格HTML
-      const { headers, data } = prepareExportData(['timestamps', dataType]);
+      const { headers, data } = prepareExportData();
       const tableDiv = document.createElement('div');
       tableDiv.style.position = 'absolute';
       tableDiv.style.left = '-9999px';
@@ -710,7 +702,7 @@ const HistoricalData = () => {
       pdf.addImage(tableCanvas.toDataURL('image/png'), 'PNG', 14, 25, imgWidth, imgHeight);
       pdf.save(`${fileName}.pdf`);
       message.success('PDF导出成功');
-    } catch (error) {
+    } catch {
       message.error('PDF导出失败，请重试');
     }
   };
@@ -725,7 +717,7 @@ const HistoricalData = () => {
         await exportTableToPDF(fileName);
       }
       setTableExportVisible(false);
-    } catch (e) {
+    } catch {
       message.error('导出失败');
     }
   };

@@ -22,14 +22,9 @@ import * as echarts from 'echarts';
 import { useNavigate } from 'react-router-dom';
 import {
   mockDashboardStats,
-  mockDevicePerformance,
-  mockAlarmStatistics,
-  mockWarningList,
-  mockRegionalDeviceData
+  mockDevicePerformance
 } from './data.js';
 import BigScreen from '../BigScreen';
-import * as XLSX from 'xlsx';
-import { getDashboardData } from '../../services/dashboardService';
 import { exportToExcel, exportToCSV } from '../../utils/exportUtils';
 
 const { Title, Text } = Typography;
@@ -78,41 +73,19 @@ const Dashboard = () => {
     darkMetal: '#2C3E50'
   };
 
-  const getIndustrialStyle = (type) => {
-    switch (type) {
-      case 'normal':
-        return INDUSTRIAL_COLORS.success;
-      case 'warning':
-        return INDUSTRIAL_COLORS.warning;
-      case 'error':
-        return INDUSTRIAL_COLORS.error;
-      default:
-        return INDUSTRIAL_COLORS.primary;
-    }
-  };
-
-  const getCardStyle = () => ({
-    backgroundColor: INDUSTRIAL_COLORS.cardBackground,
-    boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
-    borderRadius: '8px',
-    border: '1px solid #D5D8DC'
-  });
-
   const getTextStyle = (color = INDUSTRIAL_COLORS.primary) => ({
     color: color,
     fontFamily: 'Arial, sans-serif'
   });
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState(mockDashboardStats);
-  const [performance, setPerformance] = useState(mockDevicePerformance);
-  const [alarmStats, setAlarmStats] = useState(mockAlarmStatistics);
-  const [warningList, setWarningList] = useState(mockWarningList);
+  const [stats] = useState(mockDashboardStats);
+  const [performance] = useState(mockDevicePerformance);
   const [filterType, setFilterType] = useState('all');
   const [timeRange, setTimeRange] = useState('today');
   const [refreshing, setRefreshing] = useState(false);
-  const [eventData, setEventData] = useState(mockEventData);
-  const [eventStatusFilter, setEventStatusFilter] = useState('all');
+  const [eventData] = useState(mockEventData);
+  const [eventStatusFilter] = useState('all');
   const [bigScreenVisible, setBigScreenVisible] = useState(false);
 
   const deviceHealthChartRef = useRef(null);
@@ -135,11 +108,6 @@ const Dashboard = () => {
   const handleTimeRangeChange = (value) => {
     setTimeRange(value);
     // 根据时间范围筛选数据的逻辑
-  };
-
-  // 处理事件状态筛选
-  const handleEventStatusChange = (value) => {
-    setEventStatusFilter(value);
   };
 
   // 获取筛选后的事件数据
@@ -401,7 +369,7 @@ const Dashboard = () => {
           <div>
             <Space>
               <Select
-                defaultValue="today"
+                value={timeRange}
                 style={{ width: 120 }}
                 onChange={handleTimeRangeChange}
                 prefix={<CalendarOutlined />}
@@ -412,7 +380,7 @@ const Dashboard = () => {
                 <Option value="quarter">本季度</Option>
               </Select>
               <Select
-                defaultValue="all"
+                value={filterType}
                 style={{ width: 120 }}
                 onChange={(value) => setFilterType(value)}
                 popupMatchSelectWidth={false}

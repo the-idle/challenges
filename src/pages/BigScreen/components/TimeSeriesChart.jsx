@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import * as echarts from 'echarts';
 import { LineChartOutlined } from '@ant-design/icons';
 
@@ -13,7 +13,7 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
     }
   };
 
-  const getOption = () => {
+  const getOption = useCallback(() => {
     const textColor = isDarkMode ? '#a6b0c3' : '#595959';
     const splitLineColor = isDarkMode ? 'rgba(166, 176, 195, 0.1)' : 'rgba(0, 0, 0, 0.08)';
     const tooltipBg = isDarkMode ? 'rgba(10, 31, 60, 0.9)' : 'rgba(255, 255, 255, 0.95)';
@@ -22,6 +22,9 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
 
     return {
       backgroundColor: 'transparent',
+      animationDuration: 700,
+      animationDurationUpdate: 0,
+      animationEasingUpdate: 'linear',
       tooltip: {
         trigger: 'axis',
         backgroundColor: tooltipBg,
@@ -185,7 +188,7 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
         }
       ]
     };
-  };
+  }, [data, isDarkMode]);
 
   useEffect(() => {
     if (!chartRef.current) {
@@ -194,8 +197,6 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
 
     const chart = echarts.init(chartRef.current);
     chartInstanceRef.current = chart;
-    chart.setOption(getOption(), { notMerge: true });
-
     const handleResize = () => {
       chart.resize();
     };
@@ -214,7 +215,7 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
       return;
     }
     chartInstanceRef.current.setOption(getOption(), { notMerge: false, lazyUpdate: true });
-  }, [data, isDarkMode]);
+  }, [getOption]);
 
   return (
     <div className="time-series-container" style={{ height: '100%' }}>
@@ -224,24 +225,27 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
           设备实时监控数据
         </div>
         <div className="time-range-selector">
-          <div
+          <button
+            type="button"
             className={`time-range-button ${timeRange === '1h' ? 'active' : ''}`}
             onClick={() => handleTimeRangeClick('1h')}
           >
             1小时
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
             className={`time-range-button ${timeRange === '1d' ? 'active' : ''}`}
             onClick={() => handleTimeRangeClick('1d')}
           >
             1天
-          </div>
-          <div
+          </button>
+          <button
+            type="button"
             className={`time-range-button ${timeRange === '1w' ? 'active' : ''}`}
             onClick={() => handleTimeRangeClick('1w')}
           >
             1周
-          </div>
+          </button>
         </div>
       </div>
       <div ref={chartRef} className="time-series-chart" />

@@ -14,10 +14,9 @@ import {
 } from 'antd';
 import {
   FilterOutlined,
-  SearchOutlined,
 } from '@ant-design/icons';
 import * as echarts from 'echarts';
-import { mockDeviceList, mockDeviceDetail } from './data.js';
+import { mockDeviceDetail } from './data.js';
 import DeviceDetailModal from './components/DeviceDetailModal';
 import MaintenanceModal from './components/MaintenanceModal';
 import { getDeviceList } from '@/api/devic'
@@ -51,7 +50,7 @@ const DeviceMonitoring = () => {
 
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [deviceDetail, setDeviceDetail] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [timeRange, setTimeRange] = useState('1h');
   const [maintenanceVisible, setMaintenanceVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -378,7 +377,7 @@ const DeviceMonitoring = () => {
       <MaintenanceModal
         visible={maintenanceVisible}
         onCancel={() => setMaintenanceVisible(false)}
-        onSubmit={(values) => {
+        onSubmit={() => {
           setMaintenanceVisible(false);
           Modal.success({
             title: '维护已提交',

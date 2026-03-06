@@ -75,16 +75,13 @@ const AlertPanel = ({ alerts, onAlertClick }) => {
 
   return (
     <div className="alert-panel-container">
-      <div className="panel-title">
-        <BellOutlined style={{ marginRight: '8px', fontSize: '18px', color: '#333' }} />
-        <span style={{ color: '#333', fontWeight: 'bold' }}>故障预警</span>
+      <div className="panel-title alert-panel-title">
+        <BellOutlined className="panel-icon" />
+        <span className="panel-text">故障预警</span>
         <Badge
           count={alerts.filter(alert => alert.level === 'high').length}
           overflowCount={99}
-          style={{
-            backgroundColor: '#ff4d4f',
-            marginLeft: 'auto'
-          }}
+          className="alert-badge"
         />
       </div>
 
@@ -95,29 +92,29 @@ const AlertPanel = ({ alerts, onAlertClick }) => {
             className={getAlertClassName(alert)}
             onClick={() => onAlertClick && onAlertClick(alert)}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="alert-header">
+              <div className="alert-device-info">
                 {getAlertIcon(alert.level)}
-                <span style={{ fontWeight: 500, color: '#333' }}>{alert.deviceName}</span>
+                <span className="alert-device-name">{alert.deviceName}</span>
               </div>
               <Tag color={getAlertTagColor(alert.level)}>
                 {getAlertLevelText(alert.level)}级预警
               </Tag>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#666' }}>
-              <span>{alert.summary || alert.type}</span>
-              <span style={{ fontSize: '12px' }}>{alert.time?.includes(' ') ? alert.time.split(' ')[1] : alert.time}</span>
+            <div className="alert-body">
+              <span className="alert-summary">{alert.summary || alert.type}</span>
+              <span className="alert-time">{alert.time?.includes(' ') ? alert.time.split(' ')[1] : alert.time}</span>
             </div>
             {alert.rootCause ? (
-              <div style={{ marginTop: '8px', fontSize: '12px', color: '#999' }}>
+              <div className="alert-footer">
                 根因：{alert.rootCause}
               </div>
             ) : null}
           </div>
         ))}
         {animatedAlerts.length === 0 ? (
-          <div style={{ color: '#999', textAlign: 'center', marginTop: '20px' }}>等待智能体诊断推送...</div>
+          <div className="alert-empty-state">等待智能体诊断推送...</div>
         ) : null}
       </div>
     </div>

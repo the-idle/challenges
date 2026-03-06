@@ -19,6 +19,8 @@ const EventFlow = ({ events, packageStats }) => {
   // 根据事件类型获取样式类名
   const getEventClassName = (type) => {
     switch (type) {
+      case 'success':
+        return 'success';
       case 'warning':
         return 'warning';
       case 'error':
@@ -64,20 +66,20 @@ const EventFlow = ({ events, packageStats }) => {
             <div className="event-flow-item-time">{event.time}</div>
             <div className="event-flow-item-content">
               {getEventIcon(event.type)}
-              <span>
-                <span style={{ fontWeight: 500, marginRight: '8px' }}>{event.packageId || event.deviceId}</span>
+              <span className="event-flow-item-message">
+                <span className="event-flow-item-id">{event.packageId || event.deviceId}</span>
                 {event.content}
               </span>
             </div>
             {event.station ? (
-              <div style={{ marginTop: '6px', fontSize: '12px', color: '#666' }}>
+              <div className="event-flow-item-meta">
                 工位：{event.station}，重量：{event.weight}g
               </div>
             ) : null}
           </div>
         ))}
         {events.length === 0 ? (
-          <div style={{ color: '#999', textAlign: 'center', padding: '20px 0' }}>等待并联机器人抓取数据...</div>
+          <div className="event-flow-empty">等待并联机器人抓取数据...</div>
         ) : null}
       </div>
     </div>
