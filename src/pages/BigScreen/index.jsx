@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Modal, ConfigProvider, theme } from 'antd';
+import { Modal, ConfigProvider, theme, Spin } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
 import './styles.css';
 import * as XLSX from 'xlsx';
-import { getDeviceList } from '../../api/devic';
+import { getDeviceList, getOrderQuantityStats } from '../../api/devic';
 
 // 导入模拟数据
 import {
@@ -22,6 +24,15 @@ import AlertPanel from './components/AlertPanel';
 import OperationPanel from './components/OperationPanel';
 import EventFlow from './components/EventFlow';
 import DeviceDetail from './components/DeviceDetail';
+
+if (typeof globalThis.global === 'undefined') {
+  globalThis.global = globalThis;
+}
+
+const WS_FRESH_WINDOW_MS = 5000;
+const POLL_INTERVAL_WS_FRESH_MS = 15000;
+const POLL_INTERVAL_WS_DISCONNECTED_MS = 3000;
+const POLL_INTERVAL_PAGE_HIDDEN_MS = 60000;
 
 const toNumber = (value, fallback = 0) => {
   const n = Number(value);
@@ -50,9 +61,15 @@ const resolveApiBase = () => {
 };
 
 const resolveWsEndpoint = () => {
-  const base = resolveApiBase();
-  const wsBase = base.replace(/^http/, 'ws');
-  return `${wsBase}/ws/websocket`;
+  const envWsUrl = import.meta.env.VITE_WS_URL;
+  if (envWsUrl && String(envWsUrl).trim()) {
+    return String(envWsUrl).trim().replace(/\/$/, '');
+  }
+  const base = resolveApiBase().replace(/\/$/, '');
+  if (base.endsWith('/api')) {
+    return `${base.slice(0, -4)}/ws`;
+  }
+  return `${base}/ws`;
 };
 
 const readNumber = (registers, key) => {
@@ -65,6 +82,35 @@ const readBoolean = (registers, key) => {
   if (value === undefined) return null;
   return toBoolean(value);
 };
+
+const integerRegisterKeys = new Set([
+  'd150_robot_pos_x',
+  'd151_robot_pos_y',
+  'd152_robot_pos_z',
+  'd153_robot_pos_a',
+  'd154_servo_position',
+  'd156_axis_fault',
+  'd800_robot_axis_a1',
+  'd801_robot_axis_a2',
+  'd802_robot_axis_a3',
+  'd805_robot_axis_a4',
+  'd1010_lift_belt_time',
+  'd1012_sorting_belt_time'
+]);
+
+const normalizeRegisterValue = (key, value) => {
+  if (value === null || value === undefined || value === '') return value;
+  if (typeof value === 'boolean') return value;
+  const n = toNumber(value, null);
+  if (n === null) return value;
+  if (Math.abs(n) < 1e-6) return 0;
+  if (integerRegisterKeys.has(key)) return Math.round(n);
+  return Number(n.toFixed(3));
+};
+
+const normalizeRegisters = (registers = {}) => Object.fromEntries(
+  Object.entries(registers).map(([key, value]) => [key, normalizeRegisterValue(key, value)])
+);
 
 const buildKeyMetrics = (registers) => {
   if (!registers || Object.keys(registers).length === 0) {
@@ -213,9 +259,24 @@ const pushTimeSeries = (previous, nextValues = []) => {
     timestamps: nextTimestamps,
     series: previous.series.map((item, index) => ({
       ...item,
-      values: [...item.values.slice(1), Number(nextValues[index] ?? 0)]
+      values: [
+        ...item.values.slice(1),
+        Number.isFinite(Number(nextValues[index]))
+          ? Number(nextValues[index])
+          : Number(item.values[item.values.length - 1] ?? 0)
+      ]
     }))
   };
+};
+
+const hasValidRegisters = (registers) =>
+  Boolean(registers && Object.keys(registers).length > 0);
+
+const defaultPackageStats = {
+  totalOrders: 0,
+  totalItemsSold: 0,
+  pendingOrders: 0,
+  pendingItemsQuantity: 0
 };
 
 const BigScreen = ({ visible, onClose }) => {
@@ -228,33 +289,46 @@ const BigScreen = ({ visible, onClose }) => {
   const [apiStatus, setApiStatus] = useState('connected');
   const [wsStatus, setWsStatus] = useState('disconnected');
   const [wsLatencyMs, setWsLatencyMs] = useState(null);
+  const [isPageVisible, setIsPageVisible] = useState(() => document.visibilityState === 'visible');
   const [maintenanceRecords, setMaintenanceRecords] = useState([...mockMaintenanceRecords]);
+  const [hasRealtimeData, setHasRealtimeData] = useState(false);
 
   const [keyMetrics, setKeyMetrics] = useState([...mockKeyMetrics]);
   const [timeSeriesData, setTimeSeriesData] = useState({ ...mockTimeSeriesData });
   const [deviceAlerts, setDeviceAlerts] = useState([]);
   const [packageEvents] = useState([]);
-  const [packageStats] = useState({
-    orderCount: 0,
-    grabCount: 0
-  });
+  const [packageStats, setPackageStats] = useState({ ...defaultPackageStats });
   const [robotSnapshot, setRobotSnapshot] = useState(buildRobotSnapshot({}));
   const realtimePollingRef = useRef(false);
   const realtimeTimerRef = useRef(null);
   const wsClientRef = useRef(null);
-  const wsBufferRef = useRef('');
-  const wsHeartbeatTimerRef = useRef(null);
+  const wsRealtimeSubscriptionRef = useRef(null);
   const wsReconnectTimerRef = useRef(null);
-  const wsLastHeartbeatRef = useRef(0);
+  const wsReconnectAttemptRef = useRef(0);
   const wsLastRefreshRef = useRef(0);
+  const wsLastMessageAtRef = useRef(0);
+  const latestSnapshotTsRef = useRef(0);
+  const statsLastFetchedAtRef = useRef(0);
+  const latestRegistersRef = useRef({});
+  const primaryDeviceRef = useRef(null);
   const deviceCodeRef = useRef('PLC_H5U_01');
 
   const updateFromSnapshot = useCallback((baseDevice) => {
-    const registers = baseDevice?.registers || {};
+    const registers = normalizeRegisters(baseDevice?.registers || {});
+    if (!hasValidRegisters(registers)) {
+      return false;
+    }
+    const snapshotTsRaw = Number(baseDevice?.snapshotTimestamp ?? Date.now());
+    const snapshotTs = Number.isFinite(snapshotTsRaw) && snapshotTsRaw > 0 ? snapshotTsRaw : Date.now();
+    if (latestSnapshotTsRef.current > 0 && snapshotTs + 1000 < latestSnapshotTsRef.current) {
+      return false;
+    }
     const metrics = buildKeyMetrics(registers);
-    const servoPosition = readNumber(registers, 'd154_servo_position') ?? 0;
-    const robotPosZ = readNumber(registers, 'd152_robot_pos_z') ?? 0;
+    const servoPosition = readNumber(registers, 'd154_servo_position');
+    const robotPosZ = readNumber(registers, 'd152_robot_pos_z');
     setPrimaryDevice(baseDevice);
+    primaryDeviceRef.current = baseDevice;
+    latestRegistersRef.current = registers;
     if (baseDevice) {
       deviceCodeRef.current = baseDevice.deviceId || baseDevice.deviceCode || deviceCodeRef.current;
       setSelectedDevice((prev) => prev ?? baseDevice);
@@ -263,7 +337,56 @@ const BigScreen = ({ visible, onClose }) => {
     setTimeSeriesData((prev) => pushTimeSeries(prev, [servoPosition, robotPosZ]));
     setRobotSnapshot(buildRobotSnapshot(registers));
     setDeviceAlerts(buildDeviceAlerts(registers, baseDevice));
+    setHasRealtimeData(true);
+    latestSnapshotTsRef.current = Math.max(latestSnapshotTsRef.current, snapshotTs);
+    return true;
   }, []);
+
+  const buildRegistersFromRealtimePayload = useCallback((payload) => {
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+    const merged = {
+      ...(latestRegistersRef.current || {})
+    };
+    let changed = false;
+    const digital = payload?.digital || {};
+    Object.entries(digital).forEach(([key, value]) => {
+      merged[key] = toBoolean(value);
+      changed = true;
+    });
+    const analog = payload?.analog || {};
+    Object.entries(analog).forEach(([key, value]) => {
+      merged[key] = normalizeRegisterValue(key, value);
+      changed = true;
+    });
+    const encoder = payload?.encoder || {};
+    Object.entries(encoder).forEach(([key, value]) => {
+      merged[key] = normalizeRegisterValue(key, value);
+      changed = true;
+    });
+    if (!changed) {
+      return null;
+    }
+    return merged;
+  }, []);
+
+  const applyRealtimePayload = useCallback((payload) => {
+    const mergedRegisters = buildRegistersFromRealtimePayload(payload);
+    if (!mergedRegisters) {
+      return false;
+    }
+    const currentDevice = primaryDeviceRef.current || {};
+    const deviceId = payload?.deviceCode || currentDevice.deviceId || deviceCodeRef.current;
+    const nextDevice = {
+      ...currentDevice,
+      deviceId,
+      deviceName: currentDevice.deviceName || '分拣PLC-H5U-01',
+      registers: mergedRegisters,
+      snapshotTimestamp: Number(payload?.pushTimestamp ?? payload?.timestamp ?? Date.now())
+    };
+    return updateFromSnapshot(nextDevice);
+  }, [buildRegistersFromRealtimePayload, updateFromSnapshot]);
 
   const refreshLatestSnapshot = useCallback(async () => {
     if (realtimePollingRef.current) {
@@ -271,11 +394,27 @@ const BigScreen = ({ visible, onClose }) => {
     }
     realtimePollingRef.current = true;
     try {
-      const response = await getDeviceList();
-      const rows = response?.rows || [];
-      const baseDevice = rows[0] || null;
-      if (baseDevice) {
-        updateFromSnapshot(baseDevice);
+      const now = Date.now();
+      const wsHealthy = wsStatus === 'connected' && now - wsLastMessageAtRef.current < WS_FRESH_WINDOW_MS;
+      const shouldPullDevice = !wsHealthy || !hasRealtimeData;
+      if (now - statsLastFetchedAtRef.current >= 5000) {
+        const statsResult = await Promise.allSettled([getOrderQuantityStats()]);
+        if (statsResult[0]?.status === 'fulfilled') {
+          setPackageStats(statsResult[0].value);
+          statsLastFetchedAtRef.current = now;
+        }
+      }
+      if (shouldPullDevice) {
+        const response = await getDeviceList();
+        const rows = response?.rows || [];
+        const baseDevice = rows[0] || null;
+        if (baseDevice) {
+          const updated = updateFromSnapshot(baseDevice);
+          if (!updated && !hasRealtimeData) {
+            setApiStatus('disconnected');
+            return;
+          }
+        }
       }
       setApiStatus('connected');
     } catch {
@@ -283,40 +422,7 @@ const BigScreen = ({ visible, onClose }) => {
     } finally {
       realtimePollingRef.current = false;
     }
-  }, [updateFromSnapshot]);
-
-  const parseFrame = useCallback((frame) => {
-    const dividerIndex = frame.indexOf('\n\n');
-    const headerPart = dividerIndex >= 0 ? frame.slice(0, dividerIndex) : frame;
-    const bodyPart = dividerIndex >= 0 ? frame.slice(dividerIndex + 2) : '';
-    const lines = headerPart.split('\n');
-    const command = lines.shift();
-    const headers = {};
-    lines.forEach((line) => {
-      const idx = line.indexOf(':');
-      if (idx > 0) {
-        const key = line.slice(0, idx).trim();
-        const value = line.slice(idx + 1).trim();
-        headers[key] = value;
-      }
-    });
-    return { command, headers, body: bodyPart };
-  }, []);
-
-  const sendFrame = useCallback((command, headers = {}, body = '') => {
-    const ws = wsClientRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    let frame = `${command}\n`;
-    Object.entries(headers).forEach(([key, value]) => {
-      frame += `${key}:${value}\n`;
-    });
-    frame += '\n';
-    if (body) {
-      frame += body;
-    }
-    frame += '\0';
-    ws.send(frame);
-  }, []);
+  }, [hasRealtimeData, updateFromSnapshot, wsStatus]);
 
   const scheduleRefreshFromWs = useCallback(() => {
     const now = Date.now();
@@ -327,93 +433,93 @@ const BigScreen = ({ visible, onClose }) => {
     refreshLatestSnapshot();
   }, [refreshLatestSnapshot]);
 
-  const startHeartbeat = useCallback(() => {
-    if (wsHeartbeatTimerRef.current) {
-      clearInterval(wsHeartbeatTimerRef.current);
-    }
-    wsHeartbeatTimerRef.current = setInterval(() => {
-      wsLastHeartbeatRef.current = Date.now();
-      sendFrame('SEND', { destination: '/app/heartbeat', 'content-type': 'application/json' }, JSON.stringify({ ts: wsLastHeartbeatRef.current }));
-    }, 5000);
-  }, [sendFrame]);
-
-  const stopHeartbeat = useCallback(() => {
-    if (wsHeartbeatTimerRef.current) {
-      clearInterval(wsHeartbeatTimerRef.current);
-      wsHeartbeatTimerRef.current = null;
-    }
-  }, []);
-
   const connectWebSocket = useCallback(() => {
-    if (wsClientRef.current) {
-      wsClientRef.current.close();
+    if (wsReconnectTimerRef.current) {
+      clearTimeout(wsReconnectTimerRef.current);
+      wsReconnectTimerRef.current = null;
     }
-    const ws = new WebSocket(resolveWsEndpoint());
-    wsClientRef.current = ws;
-    wsBufferRef.current = '';
+    if (wsClientRef.current) {
+      wsClientRef.current.deactivate();
+      wsClientRef.current = null;
+    }
+    const client = new Client({
+      webSocketFactory: () => new SockJS(resolveWsEndpoint()),
+      reconnectDelay: 0,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000
+    });
+    wsClientRef.current = client;
 
-    ws.onopen = () => {
-      sendFrame('CONNECT', { 'accept-version': '1.2', 'heart-beat': '10000,10000' });
-    };
-
-    ws.onmessage = (event) => {
-      const chunk = typeof event.data === 'string' ? event.data : '';
-      if (chunk === '\n' || chunk === '\r\n') {
-        return;
+    client.onConnect = () => {
+      setWsStatus('connected');
+      setWsLatencyMs(null);
+      wsReconnectAttemptRef.current = 0;
+      if (wsRealtimeSubscriptionRef.current) {
+        wsRealtimeSubscriptionRef.current.unsubscribe();
       }
-      wsBufferRef.current += chunk;
-      let nullIndex = wsBufferRef.current.indexOf('\0');
-      while (nullIndex >= 0) {
-        const raw = wsBufferRef.current.slice(0, nullIndex);
-        wsBufferRef.current = wsBufferRef.current.slice(nullIndex + 1);
-        const frame = raw.trim();
-        if (frame) {
-          const parsed = parseFrame(frame);
-          if (parsed.command === 'CONNECTED') {
-            setWsStatus('connected');
-            setWsLatencyMs(null);
-            sendFrame('SUBSCRIBE', { id: 'sub-realtime', destination: `/topic/realtime/${deviceCodeRef.current}` });
-            startHeartbeat();
-          } else if (parsed.command === 'MESSAGE') {
-            if (parsed.headers.destination?.startsWith('/topic/realtime/')) {
-              try {
-                const payload = parsed.body ? JSON.parse(parsed.body) : {};
-                const timestampRaw = Number(payload?.timestamp);
-                if (Number.isFinite(timestampRaw) && timestampRaw > 0) {
-                  const normalizedTs = timestampRaw < 1_000_000_000_000 ? timestampRaw * 1000 : timestampRaw;
-                  const latency = Math.max(0, Date.now() - normalizedTs);
-                  setWsLatencyMs(latency);
-                }
-              } catch {
-                setWsLatencyMs(null);
-              }
-              scheduleRefreshFromWs();
-            }
-          } else if (parsed.command === 'ERROR') {
-            setWsStatus('disconnected');
+      wsRealtimeSubscriptionRef.current = client.subscribe(`/topic/realtime/${deviceCodeRef.current}`, (message) => {
+        try {
+          const payload = message?.body ? JSON.parse(message.body) : {};
+          const timestampRaw = Number(payload?.pushTimestamp ?? payload?.timestamp);
+          if (Number.isFinite(timestampRaw) && timestampRaw > 0) {
+            const normalizedTs = timestampRaw < 1_000_000_000_000 ? timestampRaw * 1000 : timestampRaw;
+            setWsLatencyMs(Math.max(0, Date.now() - normalizedTs));
+          } else {
             setWsLatencyMs(null);
           }
+          const applied = applyRealtimePayload(payload);
+          wsLastMessageAtRef.current = Date.now();
+          if (!applied) {
+            scheduleRefreshFromWs();
+          }
+        } catch {
+          setWsLatencyMs(null);
+          scheduleRefreshFromWs();
         }
-        nullIndex = wsBufferRef.current.indexOf('\0');
-      }
+      });
+      scheduleRefreshFromWs();
     };
 
-    ws.onclose = () => {
+    client.onStompError = () => {
       setWsStatus('disconnected');
       setWsLatencyMs(null);
-      stopHeartbeat();
+      wsLastMessageAtRef.current = 0;
+    };
+
+    client.onWebSocketError = () => {
+      setWsStatus('disconnected');
+      setWsLatencyMs(null);
+    };
+
+    client.onWebSocketClose = () => {
+      setWsStatus('disconnected');
+      setWsLatencyMs(null);
+      wsLastMessageAtRef.current = 0;
+      if (wsRealtimeSubscriptionRef.current) {
+        wsRealtimeSubscriptionRef.current.unsubscribe();
+        wsRealtimeSubscriptionRef.current = null;
+      }
       if (visible) {
+        wsReconnectAttemptRef.current += 1;
+        const delay = Math.min(15000, 1000 + wsReconnectAttemptRef.current * 1000);
         wsReconnectTimerRef.current = setTimeout(() => {
           connectWebSocket();
-        }, 3000);
+        }, delay);
       }
     };
 
-    ws.onerror = () => {
-      setWsStatus('disconnected');
-      setWsLatencyMs(null);
+    client.activate();
+  }, [applyRealtimePayload, scheduleRefreshFromWs, visible]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      setIsPageVisible(document.visibilityState === 'visible');
     };
-  }, [parseFrame, scheduleRefreshFromWs, sendFrame, startHeartbeat, stopHeartbeat, visible]);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -443,7 +549,10 @@ const BigScreen = ({ visible, onClose }) => {
       }
       await refreshLatestSnapshot();
       if (!disposed) {
-        const nextDelay = wsStatus === 'connected' ? 10000 : 2000;
+        const wsFresh = wsStatus === 'connected' && Date.now() - wsLastMessageAtRef.current < WS_FRESH_WINDOW_MS;
+        const nextDelay = !isPageVisible
+          ? POLL_INTERVAL_PAGE_HIDDEN_MS
+          : (wsFresh ? POLL_INTERVAL_WS_FRESH_MS : POLL_INTERVAL_WS_DISCONNECTED_MS);
         realtimeTimerRef.current = setTimeout(pollLatest, nextDelay);
       }
     };
@@ -455,7 +564,7 @@ const BigScreen = ({ visible, onClose }) => {
         realtimeTimerRef.current = null;
       }
     };
-  }, [visible, wsStatus, refreshLatestSnapshot]);
+  }, [visible, wsStatus, isPageVisible, refreshLatestSnapshot]);
 
   useEffect(() => {
     if (!visible) {
@@ -467,14 +576,18 @@ const BigScreen = ({ visible, onClose }) => {
         clearTimeout(wsReconnectTimerRef.current);
         wsReconnectTimerRef.current = null;
       }
-      stopHeartbeat();
+      wsReconnectAttemptRef.current = 0;
+      if (wsRealtimeSubscriptionRef.current) {
+        wsRealtimeSubscriptionRef.current.unsubscribe();
+        wsRealtimeSubscriptionRef.current = null;
+      }
       if (wsClientRef.current) {
-        wsClientRef.current.close();
+        wsClientRef.current.deactivate();
         wsClientRef.current = null;
       }
       setWsStatus('disconnected');
     };
-  }, [visible, connectWebSocket, stopHeartbeat]);
+  }, [visible, connectWebSocket]);
 
   const handleDeviceClick = (alert) => {
     if (!primaryDevice) {
@@ -603,6 +716,11 @@ const BigScreen = ({ visible, onClose }) => {
         closable
       >
         <div className="big-screen-container" data-theme={isDarkMode ? 'dark' : 'light'}>
+          {!hasRealtimeData ? (
+            <div className="realtime-data-loading">
+              <Spin size="large" tip="等待PLC实时数据..." />
+            </div>
+          ) : null}
           {/* 顶部区域 */}
           <Header
             title="工业机器人软袋小包药品柔性智能监控系统"

@@ -1,16 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Badge, Tag } from 'antd';
 import { WarningOutlined, ExclamationCircleOutlined, AlertOutlined, BellOutlined } from '@ant-design/icons';
 
 const AlertPanel = ({ alerts, onAlertClick }) => {
   const [animatedAlerts, setAnimatedAlerts] = useState([]);
+  const seenAlertIdsRef = useRef(new Set());
 
   // 添加动画效果，新的预警会闪烁
   useEffect(() => {
-    setAnimatedAlerts(alerts.map(alert => ({
-      ...alert,
-      isNew: alert.level === 'high' // 高级预警会有闪烁效果
-    })));
+    setAnimatedAlerts(alerts.map((alert) => {
+      const isNewAlert = !seenAlertIdsRef.current.has(alert.id);
+      seenAlertIdsRef.current.add(alert.id);
+      return {
+        ...alert,
+        isNew: alert.level === 'high' && isNewAlert
+      };
+    }));
 
     // 5秒后停止闪烁
     const timer = setTimeout(() => {

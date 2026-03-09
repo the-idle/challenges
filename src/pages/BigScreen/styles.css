@@ -72,6 +72,8 @@
   flex-direction: column;
   gap: 12px;
   margin-top: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .robot-status-section {
@@ -697,6 +699,19 @@
   gap: 16px;
 }
 
+.realtime-data-loading {
+  position: absolute;
+  inset: 70px 16px 16px 16px;
+  background: rgba(5, 13, 25, 0.72);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
 /* 左侧面板样式 */
 .left-panel {
   width: 25%;
@@ -1120,6 +1135,22 @@
   border-radius: 8px;
   border: 1px solid var(--border-color);
   box-shadow: 0 0 15px var(--shadow-color);
+}
+
+.device-map-loading,
+.device-map-load-failed {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 13, 25, 0.66);
+  color: var(--text-color);
+  z-index: 5;
+}
+
+.device-map-load-failed {
+  font-size: 14px;
 }
 
 .map-title {

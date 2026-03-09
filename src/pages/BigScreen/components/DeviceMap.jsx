@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GlobalOutlined } from '@ant-design/icons';
-import { Button, Space } from 'antd';
+import { Button, Space, Spin } from 'antd';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -32,8 +32,12 @@ const DeviceMap = () => {
   const alarmPhaseRef = useRef(0);
   const tempVectorRef = useRef(new THREE.Vector3());
   const isVisibleRef = useRef(!document.hidden);
+  const showModelRef = useRef(false);
+  const [showModel, setShowModel] = useState(false);
   const [isAnimating, setIsAnimating] = useState(true);
   const [isAlarmActive, setIsAlarmActive] = useState(false);
+  const [isModelLoading, setIsModelLoading] = useState(true);
+  const [isModelLoadFailed, setIsModelLoadFailed] = useState(false);
 
   const clearAlarmEffect = useCallback(() => {
     alarmMaterialsRef.current.forEach((material, index) => {
@@ -147,63 +151,74 @@ const DeviceMap = () => {
 
     let model = null;
     const loader = new GLTFLoader();
-    loader.load('/model/all.glb', (gltf) => {
-      model = gltf.scene;
-      modelRef.current = model;
-      scene.add(model);
+    setIsModelLoading(true);
+    setIsModelLoadFailed(false);
+    loader.load(
+      '/model/all.glb',
+      (gltf) => {
+        model = gltf.scene;
+        modelRef.current = model;
+        scene.add(model);
 
-      const box = new THREE.Box3().setFromObject(model);
-      const size = new THREE.Vector3();
-      const center = new THREE.Vector3();
-      box.getSize(size);
-      box.getCenter(center);
-      model.position.sub(center);
+        const box = new THREE.Box3().setFromObject(model);
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+        model.position.sub(center);
 
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const baseScale = maxDim > 0 ? 2.4 / maxDim : 1;
-      baseScaleRef.current = baseScale;
-      baseSizeRef.current = size.clone();
-      applyScale();
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const baseScale = maxDim > 0 ? 2.4 / maxDim : 1;
+        baseScaleRef.current = baseScale;
+        baseSizeRef.current = size.clone();
+        applyScale();
 
-      const nameMatcher = /(motor|fan|pump|arm|joint|gear|bearing|engine|电机|关节|机械臂|传动)/i;
-      let selectedMesh = null;
-      model.traverse((node) => {
-        if (!selectedMesh && node.isMesh && nameMatcher.test(node.name || '')) {
-          selectedMesh = node;
-        }
-      });
-      if (!selectedMesh) {
+        const nameMatcher = /(motor|fan|pump|arm|joint|gear|bearing|engine|电机|关节|机械臂|传动)/i;
+        let selectedMesh = null;
         model.traverse((node) => {
-          if (!selectedMesh && node.isMesh) {
+          if (!selectedMesh && node.isMesh && nameMatcher.test(node.name || '')) {
             selectedMesh = node;
           }
         });
-      }
-      if (selectedMesh) {
-        const originalMaterials = Array.isArray(selectedMesh.material) ? selectedMesh.material : [selectedMesh.material];
-        const clonedMaterials = originalMaterials.map((material) => (material?.clone ? material.clone() : material));
-        selectedMesh.material = Array.isArray(selectedMesh.material) ? clonedMaterials : clonedMaterials[0];
-        alarmTargetRef.current = selectedMesh;
-        alarmMaterialsRef.current = clonedMaterials.filter(Boolean);
-        alarmMaterialBackupRef.current = alarmMaterialsRef.current.map((material) => ({
-          emissive: material.emissive?.clone?.() || null,
-          emissiveIntensity: typeof material.emissiveIntensity === 'number' ? material.emissiveIntensity : 0,
-          color: material.color?.clone?.() || null
-        }));
-      }
+        if (!selectedMesh) {
+          model.traverse((node) => {
+            if (!selectedMesh && node.isMesh) {
+              selectedMesh = node;
+            }
+          });
+        }
+        if (selectedMesh) {
+          const originalMaterials = Array.isArray(selectedMesh.material) ? selectedMesh.material : [selectedMesh.material];
+          const clonedMaterials = originalMaterials.map((material) => (material?.clone ? material.clone() : material));
+          selectedMesh.material = Array.isArray(selectedMesh.material) ? clonedMaterials : clonedMaterials[0];
+          alarmTargetRef.current = selectedMesh;
+          alarmMaterialsRef.current = clonedMaterials.filter(Boolean);
+          alarmMaterialBackupRef.current = alarmMaterialsRef.current.map((material) => ({
+            emissive: material.emissive?.clone?.() || null,
+            emissiveIntensity: typeof material.emissiveIntensity === 'number' ? material.emissiveIntensity : 0,
+            color: material.color?.clone?.() || null
+          }));
+        }
 
-      if (gltf.animations && gltf.animations.length > 0) {
-        hasAnimationsRef.current = true;
-        const mixer = new THREE.AnimationMixer(model);
-        gltf.animations.forEach((clip) => {
-          const action = mixer.clipAction(clip);
-          action.reset();
-          action.play();
-        });
-        mixer.timeScale = 1;
-        mixerRef.current = mixer;
+        if (gltf.animations && gltf.animations.length > 0) {
+          hasAnimationsRef.current = true;
+          const mixer = new THREE.AnimationMixer(model);
+          gltf.animations.forEach((clip) => {
+            const action = mixer.clipAction(clip);
+            action.reset();
+            action.play();
+          });
+          mixer.timeScale = 1;
+          mixerRef.current = mixer;
+        }
+        setIsModelLoading(false);
+      },
+      undefined,
+      () => {
+        setIsModelLoading(false);
+        setIsModelLoadFailed(true);
       }
-    });
+    );
 
     const handleResize = () => {
       const { clientWidth, clientHeight } = container;
@@ -225,7 +240,7 @@ const DeviceMap = () => {
     window.addEventListener('resize', handleResize);
 
     const animate = () => {
-      if (!isVisibleRef.current) {
+      if (!isVisibleRef.current || !showModelRef.current) {
         frameRef.current = null;
         return;
       }
@@ -280,14 +295,16 @@ const DeviceMap = () => {
 
     const handleVisibilityChange = () => {
       isVisibleRef.current = !document.hidden;
-      if (isVisibleRef.current) {
+      if (isVisibleRef.current && showModelRef.current) {
         startAnimation();
       } else {
         stopAnimation();
       }
     };
 
-    startAnimation();
+    if (showModelRef.current) {
+      startAnimation();
+    }
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const handleKeyDown = (event) => {
@@ -300,6 +317,15 @@ const DeviceMap = () => {
         handleEnableAlarm();
       } else if (key === '4') {
         handleDisableAlarm();
+      } else if (key === '5') {
+        const nextState = !showModelRef.current;
+        showModelRef.current = nextState;
+        setShowModel(nextState);
+        if (nextState) {
+          startAnimation();
+        } else {
+          stopAnimation();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -351,8 +377,16 @@ const DeviceMap = () => {
           <Button size="small" onClick={handleDisableAlarm}>关闭警报</Button>
         </Space>
       </div>
-      <div className="device-map" style={{ height: 'calc(100% - 30px)', position: 'relative' }}>
+      <div className="device-map" style={{ height: 'calc(100% - 30px)', position: 'relative', visibility: showModel ? 'visible' : 'hidden' }}>
         <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+        {isModelLoading ? (
+          <div className="device-map-loading">
+            <Spin size="large" tip="3D模型加载中..." />
+          </div>
+        ) : null}
+        {!isModelLoading && isModelLoadFailed ? (
+          <div className="device-map-load-failed">模型加载失败，请检查模型文件或网络</div>
+        ) : null}
       </div>
     </div>
   );

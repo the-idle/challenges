@@ -39,12 +39,20 @@ const EventFlow = ({ events, packageStats }) => {
 
       <div className="package-stats-grid">
         <div className="package-stat-item">
-          <div className="package-stat-label">订单数量</div>
-          <div className="package-stat-value">{packageStats.orderCount}</div>
+          <div className="package-stat-label">总订单数</div>
+          <div className="package-stat-value">{packageStats.totalOrders}</div>
         </div>
         <div className="package-stat-item">
-          <div className="package-stat-label">抓取数量</div>
-          <div className="package-stat-value success">{packageStats.grabCount}</div>
+          <div className="package-stat-label">总销售药包数</div>
+          <div className="package-stat-value success">{packageStats.totalItemsSold}</div>
+        </div>
+        <div className="package-stat-item">
+          <div className="package-stat-label">待处理订单数</div>
+          <div className="package-stat-value warning">{packageStats.pendingOrders}</div>
+        </div>
+        <div className="package-stat-item">
+          <div className="package-stat-label">待处理药包数</div>
+          <div className="package-stat-value warning">{packageStats.pendingItemsQuantity}</div>
         </div>
       </div>
 

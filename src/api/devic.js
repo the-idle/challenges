@@ -7,6 +7,7 @@ const DEFAULT_MOCK_FILE = 'e:\\demo\\lsfszls\\材料\\modbus_watch_history_2026-
 const TARGET_DEVICE_CODE = import.meta.env.VITE_DEVICE_CODE || DEFAULT_DEVICE_CODE;
 const OFFLINE_MOCK = (import.meta.env.VITE_OFFLINE_MOCK ?? 'false') === 'true';
 const OFFLINE_MOCK_FILE = import.meta.env.VITE_OFFLINE_MOCK_FILE || DEFAULT_MOCK_FILE;
+const ORDER_STATS_ENDPOINT = import.meta.env.VITE_ORDER_STATS_URL || '/stats/order-quantity';
 
 const toNumber = (value) => {
   if (value === null || value === undefined || value === '') return null;
@@ -23,6 +24,35 @@ const toBoolean = (value) => {
   }
   return Boolean(value);
 };
+
+const integerRegisterKeys = new Set([
+  'd150_robot_pos_x',
+  'd151_robot_pos_y',
+  'd152_robot_pos_z',
+  'd153_robot_pos_a',
+  'd154_servo_position',
+  'd156_axis_fault',
+  'd800_robot_axis_a1',
+  'd801_robot_axis_a2',
+  'd802_robot_axis_a3',
+  'd805_robot_axis_a4',
+  'd1010_lift_belt_time',
+  'd1012_sorting_belt_time'
+]);
+
+const normalizeRegisterValue = (key, value) => {
+  if (value === null || value === undefined || value === '') return value;
+  if (typeof value === 'boolean') return value;
+  const n = toNumber(value);
+  if (n === null) return value;
+  if (Math.abs(n) < 1e-6) return 0;
+  if (integerRegisterKeys.has(key)) return Math.round(n);
+  return Number(n.toFixed(3));
+};
+
+const normalizeRegisters = (registers = {}) => Object.fromEntries(
+  Object.entries(registers).map(([key, value]) => [key, normalizeRegisterValue(key, value)])
+);
 
 const evaluateDeviceStatus = (registers = {}) => {
   const hasFault = toBoolean(registers.x2_emergency_stop)
@@ -96,6 +126,12 @@ const unwrapPayload = (payload) => {
   return payload;
 };
 
+const toSafeInt = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.round(n));
+};
+
 const buildLatestParams = (useOffline = OFFLINE_MOCK) => {
   const params = {};
   if (useOffline) {
@@ -127,7 +163,7 @@ const loadLatestSnapshot = async (deviceCode) => {
 };
 
 const mapDeviceRow = (device, snapshot) => {
-  const registers = snapshot?.registers || {};
+  const registers = normalizeRegisters(snapshot?.registers || {});
   const robotAxis = snapshot?.robotAxis || {};
   return {
     deviceId: device.deviceCode || DEFAULT_DEVICE_CODE,
@@ -234,4 +270,19 @@ export const getDeviceDetail = async (id) => {
     robotAxis: base.robotAxis
   };
   return { code: 200, data: detail };
+};
+
+export const getOrderQuantityStats = async () => {
+  const response = await request({
+    url: ORDER_STATS_ENDPOINT,
+    method: 'get'
+  });
+  const payload = unwrapPayload(response) || {};
+  return {
+    totalOrders: toSafeInt(payload.total_orders),
+    totalItemsSold: toSafeInt(payload.total_items_sold),
+    pendingOrders: toSafeInt(payload.pending_orders),
+    pendingItemsQuantity: toSafeInt(payload.pending_items_quantity),
+    message: payload.message || ''
+  };
 };
