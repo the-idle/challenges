@@ -1,8 +1,16 @@
 import axios from 'axios';
 import { message } from 'antd';
 
+const resolveBaseURL = () => {
+    const envBaseURL = import.meta.env.VITE_API_BASE_URL;
+    if (envBaseURL && String(envBaseURL).trim()) {
+        return String(envBaseURL).trim();
+    }
+    return 'http://localhost:8080/api';
+};
+
 const request = axios.create({
-    baseURL: 'http://119.45.0.18:8086',
+    baseURL: resolveBaseURL(),
     timeout: 5000
 });
 

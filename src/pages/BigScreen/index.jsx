@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Modal, ConfigProvider, theme } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import './styles.css';
@@ -9,6 +9,7 @@ import {
   subscribeAIDiagnosisAlerts,
   subscribeRobotPackageEvents
 } from '../../api/alarm';
+import { getDeviceList } from '../../api/devic';
 
 // 导入模拟数据
 import {
@@ -71,6 +72,43 @@ const normalizeAlertToDevice = (alert) => {
   };
 };
 
+const toNumber = (value, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const buildKeyMetrics = (rows) => {
+  const total = rows.length;
+  if (total === 0) {
+    return [...mockKeyMetrics];
+  }
+  const normalCount = rows.filter((item) => item.status === '正常').length;
+  const warningCount = rows.filter((item) => item.status === '预警').length;
+  const faultCount = rows.filter((item) => item.status === '故障').length;
+  const avgTemperature = rows.reduce((sum, item) => sum + toNumber(item.temperature), 0) / total;
+  const avgVibration = rows.reduce((sum, item) => sum + toNumber(item.vibration), 0) / total;
+  const onlineRate = (normalCount / total) * 100;
+  const faultRate = ((warningCount + faultCount) / total) * 100;
+  return [
+    { id: 'metric-001', title: '设备在线率', value: Number(onlineRate.toFixed(1)), unit: '%', threshold: 90, status: onlineRate >= 90 ? 'normal' : 'warning' },
+    { id: 'metric-002', title: '平均温度', value: Number(avgTemperature.toFixed(1)), unit: '℃', threshold: 80, status: avgTemperature > 80 ? 'warning' : 'normal' },
+    { id: 'metric-003', title: '平均振动', value: Number(avgVibration.toFixed(2)), unit: 'm/s²', threshold: 6, status: avgVibration > 6 ? 'warning' : 'normal' },
+    { id: 'metric-004', title: '故障率', value: Number(faultRate.toFixed(1)), unit: '%', threshold: 15, status: faultRate > 15 ? 'warning' : 'normal' }
+  ];
+};
+
+const pushTimeSeries = (previous, temperatureValue, vibrationValue) => {
+  const nextLabel = new Date().toTimeString().slice(0, 5);
+  const nextTimestamps = [...previous.timestamps.slice(1), nextLabel];
+  const nextTemperature = [...previous.temperature.slice(1), Number(temperatureValue.toFixed(1))];
+  const nextVibration = [...previous.vibration.slice(1), Number(vibrationValue.toFixed(2))];
+  return {
+    timestamps: nextTimestamps,
+    temperature: nextTemperature,
+    vibration: nextVibration
+  };
+};
+
 const BigScreen = ({ visible, onClose }) => {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [timeRange, setTimeRange] = useState('1h');
@@ -92,6 +130,8 @@ const BigScreen = ({ visible, onClose }) => {
     abnormal: 0,
     passRate: '0.0'
   });
+  const realtimePollingRef = useRef(false);
+  const realtimeTimerRef = useRef(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -115,60 +155,49 @@ const BigScreen = ({ visible, onClose }) => {
   }, [aiAgentStatus, robotStatus]);
 
   useEffect(() => {
-    const metricTimer = setInterval(() => {
-      setKeyMetrics((prev) =>
-        prev.map((metric) => {
-          const delta = metric.title.includes('在线率')
-            ? (Math.random() * 1.5 - 0.6)
-            : (Math.random() * 2 - 0.8);
-          let nextValue = Number((metric.value + delta).toFixed(1));
-          if (metric.title.includes('在线率')) {
-            nextValue = Math.max(85, Math.min(99.5, nextValue));
-          } else if (metric.title.includes('温度')) {
-            nextValue = Math.max(40, Math.min(88, nextValue));
-          } else if (metric.title.includes('振动')) {
-            nextValue = Math.max(1, Math.min(8, nextValue));
-          } else if (metric.title.includes('故障')) {
-            nextValue = Math.max(5, Math.min(20, nextValue));
-          }
-          const isOnlineRate = metric.title.includes('在线率');
-          const status = isOnlineRate
-            ? (nextValue < metric.threshold ? 'warning' : 'normal')
-            : (nextValue > metric.threshold ? 'warning' : 'normal');
-          return {
-            ...metric,
-            value: nextValue,
-            status
-          };
-        })
-      );
-    }, 5000);
-
-    return () => clearInterval(metricTimer);
-  }, []);
-
-  useEffect(() => {
-    const seriesTimer = setInterval(() => {
-      setTimeSeriesData((prev) => {
-        const now = new Date();
-        const timeLabel = now.toTimeString().slice(0, 5);
-        const lastTemp = prev.temperature[prev.temperature.length - 1] ?? 60;
-        const lastVibration = prev.vibration[prev.vibration.length - 1] ?? 3;
-        const nextTemp = Math.max(38, Math.min(95, Math.round(lastTemp + (Math.random() * 6 - 3))));
-        const nextVibrationValue = Math.max(0.8, Math.min(9.5, +(lastVibration + (Math.random() * 0.8 - 0.4)).toFixed(1)));
-        const nextTimestamps = [...prev.timestamps.slice(1), timeLabel];
-        const nextTemperature = [...prev.temperature.slice(1), nextTemp];
-        const nextVibration = [...prev.vibration.slice(1), nextVibrationValue];
-        return {
-          timestamps: nextTimestamps,
-          temperature: nextTemperature,
-          vibration: nextVibration
-        };
-      });
-    }, 10000);
-
-    return () => clearInterval(seriesTimer);
-  }, []);
+    if (!visible) {
+      return undefined;
+    }
+    let disposed = false;
+    const pollLatest = async () => {
+      if (disposed || realtimePollingRef.current) {
+        return;
+      }
+      realtimePollingRef.current = true;
+      try {
+        const response = await getDeviceList();
+        const rows = response?.rows || [];
+        const metrics = buildKeyMetrics(rows);
+        const avgTemperatureMetric = metrics.find((item) => item.id === 'metric-002');
+        const avgVibrationMetric = metrics.find((item) => item.id === 'metric-003');
+        setKeyMetrics(metrics);
+        setTimeSeriesData((prev) =>
+          pushTimeSeries(
+            prev,
+            avgTemperatureMetric?.value ?? 0,
+            avgVibrationMetric?.value ?? 0
+          )
+        );
+        setApiStatus('connected');
+      } catch {
+        setApiStatus('disconnected');
+      } finally {
+        realtimePollingRef.current = false;
+        if (!disposed) {
+          realtimeTimerRef.current = setTimeout(pollLatest, 2000);
+        }
+      }
+    };
+    pollLatest();
+    return () => {
+      disposed = true;
+      realtimePollingRef.current = false;
+      if (realtimeTimerRef.current) {
+        clearTimeout(realtimeTimerRef.current);
+        realtimeTimerRef.current = null;
+      }
+    };
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) {

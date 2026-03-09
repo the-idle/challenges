@@ -16,10 +16,9 @@ import {
   FilterOutlined,
 } from '@ant-design/icons';
 import * as echarts from 'echarts';
-import { mockDeviceDetail } from './data.js';
 import DeviceDetailModal from './components/DeviceDetailModal';
 import MaintenanceModal from './components/MaintenanceModal';
-import { getDeviceList } from '@/api/devic'
+import { getDeviceDetail, getDeviceList } from '@/api/devic'
 const { Title } = Typography;
 
 const DeviceMonitoring = () => {
@@ -50,7 +49,7 @@ const DeviceMonitoring = () => {
 
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [deviceDetail, setDeviceDetail] = useState(null);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState('1h');
   const [maintenanceVisible, setMaintenanceVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -59,18 +58,32 @@ const DeviceMonitoring = () => {
   const vibrationChartRef = useRef(null);
   const modelContainerRef = useRef(null);
 
+  const loadDeviceDetail = async (deviceId) => {
+    if (!deviceId) return;
+    setLoading(true);
+    try {
+      const res = await getDeviceDetail(deviceId);
+      if (res.code === 200) {
+        setDeviceDetail(res.data);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 页面加载时默认选中第一个设备
   useEffect(() => {
     if (deviceList.length > 0 && !selectedDevice) {
-      setSelectedDevice(deviceList[0]);
-      setDeviceDetail(mockDeviceDetail);
+      const first = deviceList[0];
+      setSelectedDevice(first);
+      loadDeviceDetail(first.deviceId);
     }
   }, [deviceList, selectedDevice]);
 
   // 修改设备选择处理函数
-  const handleDeviceSelect = (device) => {
+  const handleDeviceSelect = async (device) => {
     setSelectedDevice(device);
-    setDeviceDetail(mockDeviceDetail); // 使用静态数据
+    await loadDeviceDetail(device.deviceId);
     setDetailModalVisible(true);
   };
 
@@ -266,14 +279,17 @@ const DeviceMonitoring = () => {
 
         switch (status) {
           case 'normal':
+          case '正常':
             color = 'success';
             text = '正常';
             break;
           case 'warning':
+          case '预警':
             color = 'warning';
             text = '预警';
             break;
           case 'fault':
+          case '故障':
             color = 'error';
             text = '故障';
             break;
@@ -350,7 +366,7 @@ const DeviceMonitoring = () => {
               rowKey="deviceId"
               size="small"
               pagination={{ pageSize: 10 }}
-              rowClassName={(record) => record.deviceId === selectedDevice ? 'ant-table-row-selected' : ''}
+              rowClassName={(record) => record.deviceId === selectedDevice?.deviceId ? 'ant-table-row-selected' : ''}
               onRow={(record) => ({
                 onClick: () => handleDeviceSelect(record),
               })}
@@ -366,7 +382,7 @@ const DeviceMonitoring = () => {
         loading={loading}
         timeRange={timeRange}
         onTimeRangeChange={handleTimeRangeChange}
-        onRefreshData={() => setDeviceDetail(mockDeviceDetail)}
+        onRefreshData={() => loadDeviceDetail(selectedDevice?.deviceId)}
         onMaintenance={handleMaintenance}
         onExportData={handleExportData}
         modelContainerRef={modelContainerRef}
