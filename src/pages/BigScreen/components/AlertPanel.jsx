@@ -114,7 +114,7 @@ const AlertPanel = ({ alerts, onAlertClick }) => {
           </div>
         ))}
         {animatedAlerts.length === 0 ? (
-          <div className="alert-empty-state">等待智能体诊断推送...</div>
+          <div className="alert-empty-state">等待设备报警数据...</div>
         ) : null}
       </div>
     </div>

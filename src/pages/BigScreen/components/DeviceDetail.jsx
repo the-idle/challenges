@@ -101,6 +101,18 @@ const DeviceDetail = ({ visible, device, onClose }) => {
     };
   }, [historyData]);
 
+  const deviceId = device?.id ?? device?.deviceId ?? '-';
+  const deviceName = device?.name ?? device?.deviceName ?? '-';
+  const statusValue = device?.status === '正常'
+    ? 'normal'
+    : device?.status === '预警'
+      ? 'warning'
+      : device?.status === '故障'
+        ? 'fault'
+        : device?.status;
+  const statusLabel = statusValue === 'normal' ? '正常' : statusValue === 'warning' ? '警告' : '故障';
+  const temperatureValue = device?.temperature ?? '-';
+  const vibrationValue = device?.vibration ?? '-';
   const items = [
     {
       key: '1',
@@ -108,19 +120,18 @@ const DeviceDetail = ({ visible, device, onClose }) => {
       children: (
         <div style={{ padding: '16px' }}>
           <Descriptions bordered column={2}>
-            <Descriptions.Item label="设备ID">{device?.id}</Descriptions.Item>
-            <Descriptions.Item label="设备名称">{device?.name}</Descriptions.Item>
+            <Descriptions.Item label="设备ID">{deviceId}</Descriptions.Item>
+            <Descriptions.Item label="设备名称">{deviceName}</Descriptions.Item>
             <Descriptions.Item label="运行状态">
               <span style={{ 
-                color: device?.status === 'normal' ? '#52c41a' : 
-                       device?.status === 'warning' ? '#faad14' : '#f5222d' 
+                color: statusValue === 'normal' ? '#52c41a' : 
+                       statusValue === 'warning' ? '#faad14' : '#f5222d' 
               }}>
-                {device?.status === 'normal' ? '正常' : 
-                 device?.status === 'warning' ? '警告' : '故障'}
+                {statusLabel}
               </span>
             </Descriptions.Item>
-            <Descriptions.Item label="当前温度">{device?.temperature}℃</Descriptions.Item>
-            <Descriptions.Item label="振动强度">{device?.vibration} m/s²</Descriptions.Item>
+            <Descriptions.Item label="当前温度">{temperatureValue}℃</Descriptions.Item>
+            <Descriptions.Item label="振动强度">{vibrationValue} m/s²</Descriptions.Item>
             <Descriptions.Item label="故障类型">{device?.type || '-'}</Descriptions.Item>
             <Descriptions.Item label="诊断时间" span={2}>{device?.diagnosisTime || '-'}</Descriptions.Item>
             <Descriptions.Item label="根因分析" span={2}>{device?.rootCause || '-'}</Descriptions.Item>

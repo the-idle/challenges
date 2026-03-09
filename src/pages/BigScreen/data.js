@@ -16,10 +16,11 @@ export const mockDeviceLocations = [
 
 // 模拟关键指标数据
 export const mockKeyMetrics = [
-  { id: 'metric-001', title: '设备在线率', value: 97, unit: '%', threshold: 90, status: 'normal' },
-  { id: 'metric-002', title: '平均温度', value: 62, unit: '℃', threshold: 80, status: 'normal' },
-  { id: 'metric-003', title: '平均振动', value: 4.2, unit: 'm/s²', threshold: 6, status: 'normal' },
-  { id: 'metric-004', title: '故障率', value: 12, unit: '%', threshold: 15, status: 'normal' },
+  { id: 'metric-run-indicator', title: 'Y3运行指示灯', value: 0, unit: '', threshold: 1, status: 'error', displayValue: '停止' },
+  { id: 'metric-servo-speed', title: 'D1062伺服自动速度', value: 0, unit: '', threshold: 1, status: 'normal' },
+  { id: 'metric-servo-distance', title: 'D1060伺服一格距离', value: 0, unit: '', threshold: 1, status: 'normal' },
+  { id: 'metric-lift-time', title: 'D1010提升带时间', value: 0, unit: '', threshold: 1, status: 'normal' },
+  { id: 'metric-sort-time', title: 'D1012分拣带时间', value: 0, unit: '', threshold: 1, status: 'normal' },
 ];
 
 // 模拟温度和振动数据
@@ -27,10 +28,26 @@ export const mockTimeSeriesData = {
   timestamps: Array.from({ length: 24 }, (_, i) => {
     const date = new Date();
     date.setHours(date.getHours() - 24 + i);
-    return date.toISOString().substring(11, 16); // 格式: HH:MM
+    return date.toISOString().substring(11, 16);
   }),
-  temperature: Array.from({ length: 24 }, () => Math.floor(40 + Math.random() * 50)),
-  vibration: Array.from({ length: 24 }, () => +(1 + Math.random() * 7).toFixed(1)),
+  series: [
+    {
+      name: 'D154伺服位置',
+      unit: '',
+      color: '#1890FF',
+      areaStartColor: 'rgba(24, 144, 255, 0.4)',
+      areaEndColor: 'rgba(24, 144, 255, 0.1)',
+      values: Array.from({ length: 24 }, () => 0)
+    },
+    {
+      name: 'D152机器人位置Z',
+      unit: '',
+      color: '#FAAD14',
+      areaStartColor: 'rgba(250, 173, 20, 0.4)',
+      areaEndColor: 'rgba(250, 173, 20, 0.1)',
+      values: Array.from({ length: 24 }, () => 0)
+    }
+  ]
 };
 
 // 模拟故障预警数据
@@ -77,5 +94,4 @@ export const mockEventFlowData = [
   { time: '19:00:45', deviceId: '设备C-001', content: '紧急停机', type: 'error' },
   { time: '18:59:20', deviceId: '设备A-003', content: '运行正常', type: 'success' },
 ];
-
 

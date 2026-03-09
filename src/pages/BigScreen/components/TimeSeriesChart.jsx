@@ -20,6 +20,60 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
     const tooltipBorder = isDarkMode ? '#00a8ff' : '#d9d9d9';
     const tooltipText = isDarkMode ? '#ffffff' : '#1f1f1f';
 
+    const seriesList = Array.isArray(data.series) ? data.series : [];
+    const legendData = seriesList.map(item => item.name);
+    const yAxisList = seriesList.map((item, index) => ({
+      type: 'value',
+      name: item.unit ? `${item.name} (${item.unit})` : item.name,
+      nameTextStyle: {
+        color: textColor
+      },
+      min: 0,
+      axisLine: {
+        lineStyle: {
+          color: textColor
+        }
+      },
+      axisLabel: {
+        color: textColor,
+        formatter: item.unit ? `{value} ${item.unit}` : '{value}'
+      },
+      splitLine: {
+        show: index === 0,
+        lineStyle: {
+          color: splitLineColor
+        }
+      }
+    }));
+    const chartSeries = seriesList.map((item, index) => ({
+      name: item.name,
+      type: 'line',
+      yAxisIndex: index,
+      data: item.values,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 5,
+      sampling: 'average',
+      itemStyle: {
+        color: item.color
+      },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: item.areaStartColor || 'rgba(24, 144, 255, 0.4)' },
+            { offset: 1, color: item.areaEndColor || 'rgba(24, 144, 255, 0.1)' }
+          ]
+        }
+      },
+      emphasis: {
+        focus: 'series'
+      }
+    }));
     return {
       backgroundColor: 'transparent',
       animationDuration: 700,
@@ -41,10 +95,11 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
         formatter: function (params) {
           let result = `<div style="font-weight:bold;margin-bottom:5px;color:${tooltipText};">${params[0].axisValue}</div>`;
           params.forEach(param => {
-            const unit = param.seriesName === '温度' ? '°C' : 'm/s²';
+            const matched = seriesList.find(item => item.name === param.seriesName);
+            const unit = matched?.unit ? matched.unit : '';
             result += `<div style="display:flex;align-items:center;">
               <span style="display:inline-block;width:10px;height:10px;background-color:${param.color};margin-right:5px;"></span>
-              <span style="color:${tooltipText};">${param.seriesName}: ${param.value}${unit}</span>
+              <span style="color:${tooltipText};">${param.seriesName}: ${param.value}${unit ? unit : ''}</span>
             </div>`;
           });
           return result;
@@ -57,7 +112,7 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
         containLabel: true
       },
       legend: {
-        data: ['温度', '振动'],
+        data: legendData,
         textStyle: {
           color: textColor
         },
@@ -79,114 +134,8 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
           }
         }
       ],
-      yAxis: [
-        {
-          type: 'value',
-          name: '温度 (°C)',
-          nameTextStyle: {
-            color: textColor
-          },
-          min: 0,
-          max: 100,
-          interval: 20,
-          axisLine: {
-            lineStyle: {
-              color: textColor
-            }
-          },
-          axisLabel: {
-            color: textColor,
-            formatter: '{value} °C'
-          },
-          splitLine: {
-            lineStyle: {
-              color: splitLineColor
-            }
-          }
-        },
-        {
-          type: 'value',
-          name: '振动 (m/s²)',
-          nameTextStyle: {
-            color: textColor
-          },
-          min: 0,
-          max: 10,
-          interval: 2,
-          axisLine: {
-            lineStyle: {
-              color: textColor
-            }
-          },
-          axisLabel: {
-            color: textColor,
-            formatter: '{value} m/s²'
-          },
-          splitLine: {
-            show: false
-          }
-        }
-      ],
-      series: [
-        {
-          name: '温度',
-          type: 'line',
-          yAxisIndex: 0,
-          data: data.temperature,
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 5,
-          sampling: 'average',
-          itemStyle: {
-            color: '#1890FF'
-          },
-          areaStyle: {
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: 'rgba(24, 144, 255, 0.4)' },
-                { offset: 1, color: 'rgba(24, 144, 255, 0.1)' }
-              ]
-            }
-          },
-          emphasis: {
-            focus: 'series'
-          }
-        },
-        {
-          name: '振动',
-          type: 'line',
-          yAxisIndex: 1,
-          data: data.vibration,
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 5,
-          sampling: 'average',
-          itemStyle: {
-            color: '#FAAD14'
-          },
-          areaStyle: {
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: 'rgba(250, 173, 20, 0.4)' },
-                { offset: 1, color: 'rgba(250, 173, 20, 0.1)' }
-              ]
-            }
-          },
-          emphasis: {
-            focus: 'series'
-          }
-        }
-      ]
+      yAxis: yAxisList.length > 0 ? yAxisList : [{ type: 'value' }],
+      series: chartSeries
     };
   }, [data, isDarkMode]);
 

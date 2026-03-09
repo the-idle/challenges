@@ -4,7 +4,8 @@ const DEFAULT_DEVICE_CODE = 'PLC_H5U_01';
 const DEFAULT_DEVICE_NAME = '分拣PLC-H5U-01';
 const DEFAULT_PRODUCTION_LINE = '分拣产线-01';
 const DEFAULT_MOCK_FILE = 'e:\\demo\\lsfszls\\材料\\modbus_watch_history_2026-03-08T11-44-14-100Z.json';
-const OFFLINE_MOCK = (import.meta.env.VITE_OFFLINE_MOCK ?? 'true') !== 'false';
+const TARGET_DEVICE_CODE = import.meta.env.VITE_DEVICE_CODE || DEFAULT_DEVICE_CODE;
+const OFFLINE_MOCK = (import.meta.env.VITE_OFFLINE_MOCK ?? 'false') === 'true';
 const OFFLINE_MOCK_FILE = import.meta.env.VITE_OFFLINE_MOCK_FILE || DEFAULT_MOCK_FILE;
 
 const toNumber = (value) => {
@@ -87,30 +88,23 @@ const createMetricHistory = (current, spread) => {
   });
 };
 
-const buildLatestParams = () => {
-  const params = {};
-  if (OFFLINE_MOCK) {
-    params.offlineMock = true;
-  }
-  if (OFFLINE_MOCK_FILE) {
-    params.mockFile = OFFLINE_MOCK_FILE;
-  }
-  return params;
+const unwrapPayload = (payload) => {
+  if (!payload) return payload;
+  if (Array.isArray(payload)) return payload;
+  if (payload.registers || payload.rows) return payload;
+  if (payload.data !== undefined) return unwrapPayload(payload.data);
+  return payload;
 };
 
-const loadEnabledDevices = async () => {
-  const response = await request({
-    url: '/device/list/enabled',
-    method: 'get'
-  });
-  if (Array.isArray(response.data) && response.data.length > 0) {
-    return response.data;
+const buildLatestParams = (useOffline = OFFLINE_MOCK) => {
+  const params = {};
+  if (useOffline) {
+    params.offlineMock = true;
+    if (OFFLINE_MOCK_FILE) {
+      params.mockFile = OFFLINE_MOCK_FILE;
+    }
   }
-  return [{
-    deviceCode: DEFAULT_DEVICE_CODE,
-    deviceName: DEFAULT_DEVICE_NAME,
-    enabled: true
-  }];
+  return params;
 };
 
 const loadLatestSnapshot = async (deviceCode) => {
@@ -119,7 +113,17 @@ const loadLatestSnapshot = async (deviceCode) => {
     method: 'get',
     params: buildLatestParams()
   });
-  return response?.data || {};
+  let snapshot = unwrapPayload(response) || {};
+  const registers = snapshot?.registers || {};
+  if (OFFLINE_MOCK && Object.keys(registers).length === 0) {
+    const liveResponse = await request({
+      url: `/device/${deviceCode}/latest`,
+      method: 'get',
+      params: buildLatestParams(false)
+    });
+    snapshot = unwrapPayload(liveResponse) || snapshot;
+  }
+  return snapshot;
 };
 
 const mapDeviceRow = (device, snapshot) => {
@@ -148,17 +152,19 @@ const toHealthStatus = (status) => {
 
 export const getDeviceList = async () => {
   try {
-    const devices = await loadEnabledDevices();
-    const rows = await Promise.all(devices.map(async (device) => {
-      const snapshot = await loadLatestSnapshot(device.deviceCode || DEFAULT_DEVICE_CODE);
-      return mapDeviceRow(device, snapshot);
-    }));
+    const device = {
+      deviceCode: TARGET_DEVICE_CODE,
+      deviceName: DEFAULT_DEVICE_NAME,
+      enabled: true
+    };
+    const snapshot = await loadLatestSnapshot(TARGET_DEVICE_CODE);
+    const rows = [mapDeviceRow(device, snapshot)];
     return { code: 200, rows };
   } catch (error) {
     return {
       code: 200,
       rows: [{
-        deviceId: DEFAULT_DEVICE_CODE,
+        deviceId: TARGET_DEVICE_CODE,
         deviceName: DEFAULT_DEVICE_NAME,
         status: '正常',
         temperature: 35,

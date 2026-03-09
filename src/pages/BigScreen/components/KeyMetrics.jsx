@@ -72,6 +72,9 @@ const KeyMetrics = ({ metrics }) => {
 
   // 根据指标值和阈值确定状态
   const getStatusClass = (metric) => {
+    if (metric.status) {
+      return metric.status;
+    }
     if (metric.title.includes('温度') || metric.title.includes('振动') || metric.title.includes('故障')) {
       // 对于温度、振动和故障率，值越高越危险
       return metric.value > metric.threshold ? 'error' :
@@ -141,7 +144,10 @@ const KeyMetrics = ({ metrics }) => {
 
             <div className="metric-value-container">
               <div className="metric-value">
-                {Math.round(metric.animatedValue * 10) / 10}{metric.unit}
+                {metric.displayValue !== undefined && metric.displayValue !== null
+                  ? metric.displayValue
+                  : Math.round(metric.animatedValue * 10) / 10}
+                {metric.displayValue ? '' : metric.unit}
               </div>
             </div>
 

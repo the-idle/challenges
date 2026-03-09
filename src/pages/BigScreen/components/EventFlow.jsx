@@ -39,20 +39,12 @@ const EventFlow = ({ events, packageStats }) => {
 
       <div className="package-stats-grid">
         <div className="package-stat-item">
-          <div className="package-stat-label">抓取总数</div>
-          <div className="package-stat-value">{packageStats.total}</div>
+          <div className="package-stat-label">订单数量</div>
+          <div className="package-stat-value">{packageStats.orderCount}</div>
         </div>
         <div className="package-stat-item">
-          <div className="package-stat-label">合格包数</div>
-          <div className="package-stat-value success">{packageStats.ok}</div>
-        </div>
-        <div className="package-stat-item">
-          <div className="package-stat-label">异常包数</div>
-          <div className="package-stat-value warning">{packageStats.abnormal}</div>
-        </div>
-        <div className="package-stat-item">
-          <div className="package-stat-label">合格率</div>
-          <div className="package-stat-value">{packageStats.passRate}%</div>
+          <div className="package-stat-label">抓取数量</div>
+          <div className="package-stat-value success">{packageStats.grabCount}</div>
         </div>
       </div>
 
@@ -79,7 +71,7 @@ const EventFlow = ({ events, packageStats }) => {
           </div>
         ))}
         {events.length === 0 ? (
-          <div className="event-flow-empty">等待并联机器人抓取数据...</div>
+          <div className="event-flow-empty">等待TCP Socket抓取数据...</div>
         ) : null}
       </div>
     </div>
