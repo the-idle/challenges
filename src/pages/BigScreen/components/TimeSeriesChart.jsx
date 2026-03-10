@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import * as echarts from 'echarts';
 import { LineChartOutlined } from '@ant-design/icons';
 
-const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => {
+const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode, showTimeRangeSelector = false }) => {
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
 
@@ -173,29 +173,31 @@ const TimeSeriesChart = ({ data, timeRange, onTimeRangeChange, isDarkMode }) => 
           <LineChartOutlined style={{ marginRight: '8px', fontSize: '18px', color: 'var(--primary-color)' }} />
           设备实时监控数据
         </div>
-        <div className="time-range-selector">
-          <button
-            type="button"
-            className={`time-range-button ${timeRange === '1h' ? 'active' : ''}`}
-            onClick={() => handleTimeRangeClick('1h')}
-          >
-            1小时
-          </button>
-          <button
-            type="button"
-            className={`time-range-button ${timeRange === '1d' ? 'active' : ''}`}
-            onClick={() => handleTimeRangeClick('1d')}
-          >
-            1天
-          </button>
-          <button
-            type="button"
-            className={`time-range-button ${timeRange === '1w' ? 'active' : ''}`}
-            onClick={() => handleTimeRangeClick('1w')}
-          >
-            1周
-          </button>
-        </div>
+        {showTimeRangeSelector ? (
+          <div className="time-range-selector">
+            <button
+              type="button"
+              className={`time-range-button ${timeRange === '1h' ? 'active' : ''}`}
+              onClick={() => handleTimeRangeClick('1h')}
+            >
+              1小时
+            </button>
+            <button
+              type="button"
+              className={`time-range-button ${timeRange === '1d' ? 'active' : ''}`}
+              onClick={() => handleTimeRangeClick('1d')}
+            >
+              1天
+            </button>
+            <button
+              type="button"
+              className={`time-range-button ${timeRange === '1w' ? 'active' : ''}`}
+              onClick={() => handleTimeRangeClick('1w')}
+            >
+              1周
+            </button>
+          </div>
+        ) : null}
       </div>
       <div ref={chartRef} className="time-series-chart" />
     </div>

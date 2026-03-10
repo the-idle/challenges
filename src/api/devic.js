@@ -7,7 +7,13 @@ const DEFAULT_MOCK_FILE = 'e:\\demo\\lsfszls\\材料\\modbus_watch_history_2026-
 const TARGET_DEVICE_CODE = import.meta.env.VITE_DEVICE_CODE || DEFAULT_DEVICE_CODE;
 const OFFLINE_MOCK = (import.meta.env.VITE_OFFLINE_MOCK ?? 'false') === 'true';
 const OFFLINE_MOCK_FILE = import.meta.env.VITE_OFFLINE_MOCK_FILE || DEFAULT_MOCK_FILE;
-const ORDER_STATS_ENDPOINT = import.meta.env.VITE_ORDER_STATS_URL || '/stats/order-quantity';
+const ORDER_STATS_ENDPOINT = (() => {
+  const value = import.meta.env.VITE_ORDER_STATS_URL;
+  if (value && String(value).trim()) {
+    return String(value).trim();
+  }
+  return '';
+})();
 
 const toNumber = (value) => {
   if (value === null || value === undefined || value === '') return null;
@@ -176,7 +182,9 @@ const mapDeviceRow = (device, snapshot) => {
     registers,
     robotPosition: snapshot?.robotPosition || {},
     robotAxis,
-    snapshotTimestamp: snapshot?.timestamp || Date.now()
+    snapshotTimestamp: snapshot?.timestamp || Date.now(),
+    aiAlerts: Array.isArray(snapshot?.aiAlerts) ? snapshot.aiAlerts : [],
+    aiMeta: snapshot?.aiMeta || null
   };
 };
 
@@ -210,7 +218,9 @@ export const getDeviceList = async () => {
         registers: {},
         robotPosition: {},
         robotAxis: {},
-        snapshotTimestamp: Date.now()
+        snapshotTimestamp: Date.now(),
+        aiAlerts: [],
+        aiMeta: null
       }],
       error
     };
@@ -273,16 +283,35 @@ export const getDeviceDetail = async (id) => {
 };
 
 export const getOrderQuantityStats = async () => {
-  const response = await request({
-    url: ORDER_STATS_ENDPOINT,
-    method: 'get'
-  });
-  const payload = unwrapPayload(response) || {};
-  return {
-    totalOrders: toSafeInt(payload.total_orders),
-    totalItemsSold: toSafeInt(payload.total_items_sold),
-    pendingOrders: toSafeInt(payload.pending_orders),
-    pendingItemsQuantity: toSafeInt(payload.pending_items_quantity),
-    message: payload.message || ''
-  };
+  if (!ORDER_STATS_ENDPOINT) {
+    return {
+      totalOrders: 0,
+      totalItemsSold: 0,
+      pendingOrders: 0,
+      pendingItemsQuantity: 0,
+      message: ''
+    };
+  }
+  try {
+    const response = await request({
+      url: ORDER_STATS_ENDPOINT,
+      method: 'get'
+    });
+    const payload = unwrapPayload(response) || {};
+    return {
+      totalOrders: toSafeInt(payload.total_orders),
+      totalItemsSold: toSafeInt(payload.total_items_sold),
+      pendingOrders: toSafeInt(payload.pending_orders),
+      pendingItemsQuantity: toSafeInt(payload.pending_items_quantity),
+      message: payload.message || ''
+    };
+  } catch {
+    return {
+      totalOrders: 0,
+      totalItemsSold: 0,
+      pendingOrders: 0,
+      pendingItemsQuantity: 0,
+      message: ''
+    };
+  }
 };

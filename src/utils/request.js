@@ -6,7 +6,7 @@ const resolveBaseURL = () => {
     if (envBaseURL && String(envBaseURL).trim()) {
         return String(envBaseURL).trim();
     }
-    return 'http://localhost:8080/api';
+    return '/api';
 };
 
 const request = axios.create({

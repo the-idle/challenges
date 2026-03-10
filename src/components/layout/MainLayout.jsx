@@ -14,14 +14,12 @@ import {
   RobotOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import BigScreen from '../../pages/BigScreen';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
 const MainLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [bigScreenVisible, setBigScreenVisible] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleString());
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,7 +38,7 @@ const MainLayout = () => {
   // 菜单项配置
   const menuItems = [
     {
-      key: 'bigscreen',
+      key: '/bigscreen',
       icon: <FullscreenOutlined />,
       label: '可视化大屏',
     },
@@ -101,11 +99,7 @@ const MainLayout = () => {
 
   // 处理菜单点击事件
   const handleMenuClick = ({ key }) => {
-    if (key === 'bigscreen') {
-      setBigScreenVisible(true);
-    } else {
-      navigate(key);
-    }
+    navigate(key);
   };
 
   // 更新当前时间
@@ -223,11 +217,6 @@ const MainLayout = () => {
           <Outlet />
         </Content>
       </Layout>
-      {/* 大屏模式组件 */}
-      <BigScreen
-        visible={bigScreenVisible}
-        onClose={() => setBigScreenVisible(false)}
-      />
 
       {/* 全局样式 */}
       <style jsx="true">{`

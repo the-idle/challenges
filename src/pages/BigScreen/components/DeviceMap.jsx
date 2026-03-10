@@ -16,6 +16,7 @@ const DeviceMap = () => {
   const baseSizeRef = useRef(new THREE.Vector3());
   const frameRef = useRef(null);
   const clockRef = useRef(new THREE.Clock());
+  const animationActionsRef = useRef([]);
   const modelInfoRef = useRef({
     size: new THREE.Vector3(),
     scale: 1
@@ -34,6 +35,7 @@ const DeviceMap = () => {
   const isVisibleRef = useRef(!document.hidden);
   const showModelRef = useRef(false);
   const [showModel, setShowModel] = useState(false);
+  const [modelRequested, setModelRequested] = useState(false);
   const [isAnimating, setIsAnimating] = useState(true);
   const [isAlarmActive, setIsAlarmActive] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
@@ -61,6 +63,29 @@ const DeviceMap = () => {
 
   const handlePlayAnimation = useCallback(() => {
     animationEnabledRef.current = true;
+    animationActionsRef.current.forEach((action) => {
+      action.setLoop(THREE.LoopRepeat, Infinity);
+      action.clampWhenFinished = false;
+      action.enabled = true;
+      action.paused = false;
+      action.play();
+    });
+    if (mixerRef.current) {
+      mixerRef.current.timeScale = 1;
+    }
+    setIsAnimating(true);
+  }, []);
+
+  const handlePlayAnimationOnce = useCallback(() => {
+    animationEnabledRef.current = true;
+    animationActionsRef.current.forEach((action) => {
+      action.setLoop(THREE.LoopOnce, 1);
+      action.clampWhenFinished = true;
+      action.reset();
+      action.enabled = true;
+      action.paused = false;
+      action.play();
+    });
     if (mixerRef.current) {
       mixerRef.current.timeScale = 1;
     }
@@ -85,6 +110,12 @@ const DeviceMap = () => {
     clearAlarmEffect();
     setIsAlarmActive(false);
   }, [clearAlarmEffect]);
+
+  const handleShowModel = useCallback(() => {
+    setModelRequested(true);
+    showModelRef.current = true;
+    setShowModel(true);
+  }, []);
 
   const applyScale = () => {
     if (!modelRef.current) {
@@ -203,11 +234,14 @@ const DeviceMap = () => {
         if (gltf.animations && gltf.animations.length > 0) {
           hasAnimationsRef.current = true;
           const mixer = new THREE.AnimationMixer(model);
+          const actions = [];
           gltf.animations.forEach((clip) => {
             const action = mixer.clipAction(clip);
             action.reset();
             action.play();
+            actions.push(action);
           });
+          animationActionsRef.current = actions;
           mixer.timeScale = 1;
           mixerRef.current = mixer;
         }
@@ -309,7 +343,9 @@ const DeviceMap = () => {
 
     const handleKeyDown = (event) => {
       const key = event.key.toLowerCase();
-      if (key === '1') {
+      if (key === '0') {
+        handlePlayAnimationOnce();
+      } else if (key === '1') {
         handlePlayAnimation();
       } else if (key === '2') {
         handlePauseAnimation();
@@ -318,14 +354,8 @@ const DeviceMap = () => {
       } else if (key === '4') {
         handleDisableAlarm();
       } else if (key === '5') {
-        const nextState = !showModelRef.current;
-        showModelRef.current = nextState;
-        setShowModel(nextState);
-        if (nextState) {
-          startAnimation();
-        } else {
-          stopAnimation();
-        }
+        handleShowModel();
+        startAnimation();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -340,6 +370,7 @@ const DeviceMap = () => {
       alarmTargetRef.current = null;
       alarmMaterialsRef.current = [];
       alarmMaterialBackupRef.current = [];
+      animationActionsRef.current = [];
       if (resizeObserver) {
         resizeObserver.disconnect();
       }
@@ -353,7 +384,7 @@ const DeviceMap = () => {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [clearAlarmEffect, handleDisableAlarm, handleEnableAlarm, handlePauseAnimation, handlePlayAnimation]);
+  }, [clearAlarmEffect, handleDisableAlarm, handleEnableAlarm, handlePauseAnimation, handlePlayAnimation, handlePlayAnimationOnce, handleShowModel]);
 
   useEffect(() => {
     applyScale();
@@ -371,17 +402,27 @@ const DeviceMap = () => {
           柔性智能分拣系统模型
         </div>
         <Space size={6} wrap>
+          <Button size="small" onClick={handlePlayAnimationOnce}>播放一次</Button>
           <Button size="small" type={isAnimating ? 'primary' : 'default'} onClick={handlePlayAnimation}>播放动画</Button>
           <Button size="small" onClick={handlePauseAnimation}>暂停动画</Button>
           <Button size="small" danger type={isAlarmActive ? 'primary' : 'default'} onClick={handleEnableAlarm}>开启警报</Button>
           <Button size="small" onClick={handleDisableAlarm}>关闭警报</Button>
+          <Button size="small" type={showModel ? 'primary' : 'default'} onClick={handleShowModel}>显示模型</Button>
         </Space>
       </div>
-      <div className="device-map" style={{ height: 'calc(100% - 30px)', position: 'relative', visibility: showModel ? 'visible' : 'hidden' }}>
-        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-        {isModelLoading ? (
+      <div className="device-map" style={{ height: 'calc(100% - 30px)', position: 'relative' }}>
+        <div ref={containerRef} style={{ width: '100%', height: '100%', opacity: showModel ? 1 : 0 }} />
+        {!modelRequested ? (
+          <div className="device-map-loading device-map-awaiting">
+            <div className="device-map-awaiting-pulse" />
+            <div className="device-map-awaiting-text">模型待命中，按 5 显示模型</div>
+            <div className="device-map-awaiting-subtext">快捷键：0播一次 1循环 2暂停 3红光开 4红光关 6 AI预警</div>
+          </div>
+        ) : null}
+        {modelRequested && isModelLoading ? (
           <div className="device-map-loading">
-            <Spin size="large" tip="3D模型加载中..." />
+            <Spin size="large" />
+            <div className="device-map-awaiting-text">3D模型加载中...</div>
           </div>
         ) : null}
         {!isModelLoading && isModelLoadFailed ? (

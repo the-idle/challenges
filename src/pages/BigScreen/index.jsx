@@ -9,7 +9,6 @@ import { getDeviceList, getOrderQuantityStats } from '../../api/devic';
 
 // 导入模拟数据
 import {
-  mockKeyMetrics,
   mockTimeSeriesData,
   mockMaintenanceRecords,
 } from './data.js';
@@ -30,9 +29,21 @@ if (typeof globalThis.global === 'undefined') {
 }
 
 const WS_FRESH_WINDOW_MS = 5000;
-const POLL_INTERVAL_WS_FRESH_MS = 15000;
-const POLL_INTERVAL_WS_DISCONNECTED_MS = 3000;
-const POLL_INTERVAL_PAGE_HIDDEN_MS = 60000;
+const POLL_INTERVAL_WS_FRESH_MS = 2500;
+const POLL_INTERVAL_WS_DISCONNECTED_MS = 1000;
+const POLL_INTERVAL_PAGE_HIDDEN_MS = 15000;
+const MAX_MANUAL_ALERTS = 20;
+const HOTKEY6_ALERT_TEMPLATE = {
+  level: 'high',
+  type: 'AI流程预警',
+  summary: 'AI预警：分拣臂振荡趋势上升',
+  rootCause: '按键6触发流程演练，告警内容可在 HOTKEY6_ALERT_TEMPLATE 中自定义',
+  source: 'AI流程演练',
+  confidencePct: 93,
+  riskScore: 88,
+  forecast: '预测窗口：30s',
+  suggestion: '建议降速并执行点检流程'
+};
 
 const toNumber = (value, fallback = 0) => {
   const n = Number(value);
@@ -57,7 +68,7 @@ const resolveApiBase = () => {
   if (envBaseURL && String(envBaseURL).trim()) {
     return String(envBaseURL).trim().replace(/\/$/, '');
   }
-  return 'http://localhost:8080/api';
+  return '/api';
 };
 
 const resolveWsEndpoint = () => {
@@ -66,9 +77,6 @@ const resolveWsEndpoint = () => {
     return String(envWsUrl).trim().replace(/\/$/, '');
   }
   const base = resolveApiBase().replace(/\/$/, '');
-  if (base.endsWith('/api')) {
-    return `${base.slice(0, -4)}/ws`;
-  }
   return `${base}/ws`;
 };
 
@@ -112,18 +120,36 @@ const normalizeRegisters = (registers = {}) => Object.fromEntries(
   Object.entries(registers).map(([key, value]) => [key, normalizeRegisterValue(key, value)])
 );
 
+const isRegisterValueUsable = (value) => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string' && value.trim() === '') return false;
+  if (typeof value === 'number' && !Number.isFinite(value)) return false;
+  return true;
+};
+
+const mergeStableRegisters = (previous = {}, incoming = {}) => {
+  const merged = { ...previous };
+  Object.entries(incoming).forEach(([key, raw]) => {
+    if (!isRegisterValueUsable(raw)) {
+      return;
+    }
+    const normalized = normalizeRegisterValue(key, raw);
+    if (!isRegisterValueUsable(normalized)) {
+      return;
+    }
+    merged[key] = normalized;
+  });
+  return merged;
+};
+
 const buildKeyMetrics = (registers) => {
-  if (!registers || Object.keys(registers).length === 0) {
-    return [...mockKeyMetrics];
-  }
   const runIndicator = readBoolean(registers, 'y3_run_indicator');
-  const servoSpeed = readNumber(registers, 'd1062_servo_auto_speed');
-  const servoDistance = readNumber(registers, 'd1060_servo_step_distance');
-  const liftTime = readNumber(registers, 'd1010_lift_belt_time');
-  const sortTime = readNumber(registers, 'd1012_sorting_belt_time');
+  const buzzer = readBoolean(registers, 'y2_buzzer');
+  const conveyor = readBoolean(registers, 'm5_conveyor_in_action');
+  const lifter = readBoolean(registers, 'm4_lifter_in_action');
   return [
     {
-      id: 'metric-run-indicator',
+      id: 'metric-y3-run-indicator',
       title: 'Y3运行指示灯',
       value: runIndicator ? 1 : 0,
       unit: '',
@@ -132,36 +158,31 @@ const buildKeyMetrics = (registers) => {
       displayValue: runIndicator ? '运行' : '停止'
     },
     {
-      id: 'metric-servo-speed',
-      title: 'D1062伺服自动速度',
-      value: servoSpeed ?? 0,
+      id: 'metric-y2-buzzer',
+      title: 'Y2蜂鸣器',
+      value: buzzer ? 1 : 0,
       unit: '',
-      threshold: Math.max(1, Math.abs(servoSpeed ?? 0)),
-      status: 'normal'
+      threshold: 1,
+      status: buzzer ? 'warning' : 'normal',
+      displayValue: buzzer ? '启动' : '停止'
     },
     {
-      id: 'metric-servo-distance',
-      title: 'D1060伺服一格距离',
-      value: servoDistance ?? 0,
+      id: 'metric-m5-conveyor',
+      title: 'M5输送机动作中',
+      value: conveyor ? 1 : 0,
       unit: '',
-      threshold: Math.max(1, Math.abs(servoDistance ?? 0)),
-      status: 'normal'
+      threshold: 1,
+      status: conveyor ? 'normal' : 'error',
+      displayValue: conveyor ? '运行' : '停止'
     },
     {
-      id: 'metric-lift-time',
-      title: 'D1010提升带时间',
-      value: liftTime ?? 0,
+      id: 'metric-m4-lifter',
+      title: 'M4提升机动作中',
+      value: lifter ? 1 : 0,
       unit: '',
-      threshold: Math.max(1, Math.abs(liftTime ?? 0)),
-      status: 'normal'
-    },
-    {
-      id: 'metric-sort-time',
-      title: 'D1012分拣带时间',
-      value: sortTime ?? 0,
-      unit: '',
-      threshold: Math.max(1, Math.abs(sortTime ?? 0)),
-      status: 'normal'
+      threshold: 1,
+      status: lifter ? 'normal' : 'error',
+      displayValue: lifter ? '运行' : '停止'
     }
   ];
 };
@@ -190,7 +211,8 @@ const buildDeviceAlerts = (registers, device) => {
   if (!registers) {
     return [];
   }
-  const now = formatTime(new Date());
+  const nowTs = Date.now();
+  const now = formatTime(new Date(nowTs));
   const alerts = [];
   if (readBoolean(registers, 'm513_robot_fault')) {
     alerts.push({
@@ -200,7 +222,9 @@ const buildDeviceAlerts = (registers, device) => {
       level: 'high',
       type: '机器人故障',
       summary: 'M513机器人故障',
-      time: now
+      time: now,
+      source: '规则引擎',
+      createdAt: nowTs
     });
   }
   const axisFault = readNumber(registers, 'd156_axis_fault');
@@ -212,7 +236,9 @@ const buildDeviceAlerts = (registers, device) => {
       level: 'high',
       type: '轴故障',
       summary: 'D156轴故障',
-      time: now
+      time: now,
+      source: '规则引擎',
+      createdAt: nowTs
     });
   }
   if (readBoolean(registers, 'x2_emergency_stop')) {
@@ -223,7 +249,9 @@ const buildDeviceAlerts = (registers, device) => {
       level: 'high',
       type: '急停触发',
       summary: 'X2急停',
-      time: now
+      time: now,
+      source: '规则引擎',
+      createdAt: nowTs
     });
   }
   if (readBoolean(registers, 'm21_total_emergency_stop')) {
@@ -234,7 +262,9 @@ const buildDeviceAlerts = (registers, device) => {
       level: 'high',
       type: '总急停',
       summary: 'M21总急停',
-      time: now
+      time: now,
+      source: '规则引擎',
+      createdAt: nowTs
     });
   }
   const safePosition = readBoolean(registers, 'm510_safe_position');
@@ -246,10 +276,56 @@ const buildDeviceAlerts = (registers, device) => {
       level: 'medium',
       type: '安全位异常',
       summary: 'M510安全位异常',
-      time: now
+      time: now,
+      source: '规则引擎',
+      createdAt: nowTs
     });
   }
   return alerts;
+};
+
+const buildBackendAiAlerts = (backendAlerts, device, snapshotTimestamp) => {
+  if (!Array.isArray(backendAlerts) || backendAlerts.length === 0) {
+    return [];
+  }
+  const fallbackTs = Number.isFinite(Number(snapshotTimestamp)) ? Number(snapshotTimestamp) : Date.now();
+  return backendAlerts.map((item, index) => {
+    const createdAt = Number.isFinite(Number(item?.createdAt)) ? Number(item.createdAt) : fallbackTs + index;
+    return {
+      id: item?.id || `ai-backend-${createdAt}-${index}`,
+      deviceId: device?.deviceId || device?.deviceCode,
+      deviceName: device?.deviceName || device?.name || '分拣PLC-H5U-01',
+      level: item?.level || 'medium',
+      type: item?.type || 'AI异常检测',
+      summary: item?.summary || 'AI检测到异常风险',
+      rootCause: item?.rootCause,
+      source: item?.source || 'AI告警',
+      confidencePct: item?.confidencePct,
+      riskScore: item?.riskScore,
+      forecast: item?.forecast,
+      suggestion: item?.suggestion,
+      time: item?.time || formatTime(new Date(createdAt)),
+      createdAt
+    };
+  });
+};
+
+const mergeAlerts = (realtimeAlerts = [], manualAlerts = []) => {
+  const severityWeight = { high: 3, medium: 2, low: 1 };
+  const mergedMap = new Map();
+  [...manualAlerts, ...realtimeAlerts].forEach((alert) => {
+    if (!alert || !alert.id) {
+      return;
+    }
+    mergedMap.set(alert.id, alert);
+  });
+  return Array.from(mergedMap.values()).sort((a, b) => {
+    const levelDiff = (severityWeight[b.level] || 0) - (severityWeight[a.level] || 0);
+    if (levelDiff !== 0) {
+      return levelDiff;
+    }
+    return Number(b.createdAt || 0) - Number(a.createdAt || 0);
+  });
 };
 
 const pushTimeSeries = (previous, nextValues = []) => {
@@ -283,6 +359,7 @@ const BigScreen = ({ visible, onClose }) => {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [timeRange, setTimeRange] = useState('1h');
   const [selectedDevice, setSelectedDevice] = useState(null);
+  const [selectedAlertId, setSelectedAlertId] = useState(null);
   const [primaryDevice, setPrimaryDevice] = useState(null);
   const [deviceDetailVisible, setDeviceDetailVisible] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleString());
@@ -293,7 +370,7 @@ const BigScreen = ({ visible, onClose }) => {
   const [maintenanceRecords, setMaintenanceRecords] = useState([...mockMaintenanceRecords]);
   const [hasRealtimeData, setHasRealtimeData] = useState(false);
 
-  const [keyMetrics, setKeyMetrics] = useState([...mockKeyMetrics]);
+  const [keyMetrics, setKeyMetrics] = useState(() => buildKeyMetrics({}));
   const [timeSeriesData, setTimeSeriesData] = useState({ ...mockTimeSeriesData });
   const [deviceAlerts, setDeviceAlerts] = useState([]);
   const [packageEvents] = useState([]);
@@ -304,6 +381,7 @@ const BigScreen = ({ visible, onClose }) => {
   const wsClientRef = useRef(null);
   const wsRealtimeSubscriptionRef = useRef(null);
   const wsReconnectTimerRef = useRef(null);
+  const connectWebSocketRef = useRef(null);
   const wsReconnectAttemptRef = useRef(0);
   const wsLastRefreshRef = useRef(0);
   const wsLastMessageAtRef = useRef(0);
@@ -312,9 +390,11 @@ const BigScreen = ({ visible, onClose }) => {
   const latestRegistersRef = useRef({});
   const primaryDeviceRef = useRef(null);
   const deviceCodeRef = useRef('PLC_H5U_01');
+  const manualAlertsRef = useRef([]);
 
   const updateFromSnapshot = useCallback((baseDevice) => {
-    const registers = normalizeRegisters(baseDevice?.registers || {});
+    const normalizedRegisters = normalizeRegisters(baseDevice?.registers || {});
+    const registers = mergeStableRegisters(latestRegistersRef.current, normalizedRegisters);
     if (!hasValidRegisters(registers)) {
       return false;
     }
@@ -336,7 +416,9 @@ const BigScreen = ({ visible, onClose }) => {
     setKeyMetrics(metrics);
     setTimeSeriesData((prev) => pushTimeSeries(prev, [servoPosition, robotPosZ]));
     setRobotSnapshot(buildRobotSnapshot(registers));
-    setDeviceAlerts(buildDeviceAlerts(registers, baseDevice));
+    const ruleAlerts = buildDeviceAlerts(registers, baseDevice);
+    const aiAlerts = buildBackendAiAlerts(baseDevice?.aiAlerts, baseDevice, snapshotTs);
+    setDeviceAlerts(mergeAlerts([...ruleAlerts, ...aiAlerts], manualAlertsRef.current));
     setHasRealtimeData(true);
     latestSnapshotTsRef.current = Math.max(latestSnapshotTsRef.current, snapshotTs);
     return true;
@@ -350,18 +432,63 @@ const BigScreen = ({ visible, onClose }) => {
       ...(latestRegistersRef.current || {})
     };
     let changed = false;
+    const changedRegisters = payload?.changedRegisters;
+    if (changedRegisters && typeof changedRegisters === 'object') {
+      Object.entries(changedRegisters).forEach(([key, value]) => {
+        if (!isRegisterValueUsable(value)) {
+          return;
+        }
+        if (typeof value === 'boolean') {
+          merged[key] = value;
+        } else {
+          const normalized = normalizeRegisterValue(key, value);
+          if (!isRegisterValueUsable(normalized)) {
+            return;
+          }
+          merged[key] = normalized;
+        }
+        changed = true;
+      });
+    }
+    const registers = payload?.registers;
+    if (registers && typeof registers === 'object') {
+      Object.entries(registers).forEach(([key, value]) => {
+        if (!isRegisterValueUsable(value)) {
+          return;
+        }
+        if (typeof value === 'boolean') {
+          merged[key] = value;
+        } else {
+          const normalized = normalizeRegisterValue(key, value);
+          if (!isRegisterValueUsable(normalized)) {
+            return;
+          }
+          merged[key] = normalized;
+        }
+        changed = true;
+      });
+    }
     const digital = payload?.digital || {};
     Object.entries(digital).forEach(([key, value]) => {
+      if (!isRegisterValueUsable(value)) {
+        return;
+      }
       merged[key] = toBoolean(value);
       changed = true;
     });
     const analog = payload?.analog || {};
     Object.entries(analog).forEach(([key, value]) => {
+      if (!isRegisterValueUsable(value)) {
+        return;
+      }
       merged[key] = normalizeRegisterValue(key, value);
       changed = true;
     });
     const encoder = payload?.encoder || {};
     Object.entries(encoder).forEach(([key, value]) => {
+      if (!isRegisterValueUsable(value)) {
+        return;
+      }
       merged[key] = normalizeRegisterValue(key, value);
       changed = true;
     });
@@ -512,6 +639,10 @@ const BigScreen = ({ visible, onClose }) => {
   }, [applyRealtimePayload, scheduleRefreshFromWs, visible]);
 
   useEffect(() => {
+    connectWebSocketRef.current = connectWebSocket;
+  }, [connectWebSocket]);
+
+  useEffect(() => {
     const onVisibilityChange = () => {
       setIsPageVisible(document.visibilityState === 'visible');
     };
@@ -570,7 +701,9 @@ const BigScreen = ({ visible, onClose }) => {
     if (!visible) {
       return undefined;
     }
-    connectWebSocket();
+    if (connectWebSocketRef.current) {
+      connectWebSocketRef.current();
+    }
     return () => {
       if (wsReconnectTimerRef.current) {
         clearTimeout(wsReconnectTimerRef.current);
@@ -587,19 +720,86 @@ const BigScreen = ({ visible, onClose }) => {
       }
       setWsStatus('disconnected');
     };
-  }, [visible, connectWebSocket]);
+  }, [visible]);
 
-  const handleDeviceClick = (alert) => {
-    if (!primaryDevice) {
-      return;
+  useEffect(() => {
+    if (!visible) {
+      return undefined;
     }
-    setSelectedDevice({
-      ...primaryDevice,
-      summary: alert.summary,
-      type: alert.type,
-      status: alert.level === 'high' ? 'fault' : alert.level === 'medium' ? 'warning' : 'normal',
-      diagnosisTime: alert.time
-    });
+    const handlePageFocus = () => {
+      refreshLatestSnapshot();
+      if (wsStatus !== 'connected' && connectWebSocketRef.current) {
+        connectWebSocketRef.current();
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+      handlePageFocus();
+    };
+    window.addEventListener('focus', handlePageFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    handlePageFocus();
+    const handleManualAlertHotkey = (event) => {
+      if (event.key !== '6') {
+        return;
+      }
+      const nowTs = Date.now();
+      const current = primaryDeviceRef.current || {};
+      const manualAlert = {
+        ...HOTKEY6_ALERT_TEMPLATE,
+        id: `manual-ai-${nowTs}`,
+        deviceId: current.deviceId || current.id || 'PLC_H5U_01',
+        deviceName: current.deviceName || current.name || '分拣PLC-H5U-01',
+        time: formatTime(new Date(nowTs)),
+        createdAt: nowTs
+      };
+      manualAlertsRef.current = [manualAlert, ...manualAlertsRef.current].slice(0, MAX_MANUAL_ALERTS);
+      setDeviceAlerts((prev) => {
+        const realtimeAlerts = prev.filter((item) => item?.source !== HOTKEY6_ALERT_TEMPLATE.source);
+        return mergeAlerts(realtimeAlerts, manualAlertsRef.current);
+      });
+      setSelectedAlertId(manualAlert.id);
+      setSelectedDevice({
+        ...current,
+        deviceId: current.deviceId || manualAlert.deviceId || current.id || '-',
+        deviceName: current.deviceName || manualAlert.deviceName || current.name || '分拣PLC-H5U-01',
+        summary: manualAlert.summary,
+        type: manualAlert.type,
+        status: manualAlert.level === 'high' ? 'fault' : manualAlert.level === 'medium' ? 'warning' : 'normal',
+        diagnosisTime: manualAlert.time
+      });
+    };
+    window.addEventListener('keydown', handleManualAlertHotkey);
+    return () => {
+      window.removeEventListener('keydown', handleManualAlertHotkey);
+      window.removeEventListener('focus', handlePageFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshLatestSnapshot, visible, wsStatus]);
+
+  const buildSelectedDeviceFromAlert = (alert) => {
+    const current = primaryDevice || {};
+    return {
+      ...current,
+      deviceId: current.deviceId || alert?.deviceId || current.id || '-',
+      deviceName: current.deviceName || alert?.deviceName || current.name || '分拣PLC-H5U-01',
+      summary: alert?.summary,
+      type: alert?.type,
+      status: alert?.level === 'high' ? 'fault' : alert?.level === 'medium' ? 'warning' : 'normal',
+      diagnosisTime: alert?.time
+    };
+  };
+
+  const handleAlertSelect = (alert) => {
+    setSelectedAlertId(alert?.id || null);
+    setSelectedDevice(buildSelectedDeviceFromAlert(alert));
+  };
+
+  const handleAlertOpenDetail = (alert) => {
+    setSelectedAlertId(alert?.id || null);
+    setSelectedDevice(buildSelectedDeviceFromAlert(alert));
     setDeviceDetailVisible(true);
   };
 
@@ -718,7 +918,10 @@ const BigScreen = ({ visible, onClose }) => {
         <div className="big-screen-container" data-theme={isDarkMode ? 'dark' : 'light'}>
           {!hasRealtimeData ? (
             <div className="realtime-data-loading">
-              <Spin size="large" tip="等待PLC实时数据..." />
+              <div className="realtime-data-loading-inner">
+                <Spin size="large" />
+                <div className="realtime-data-loading-text">等待PLC实时数据...</div>
+              </div>
             </div>
           ) : null}
           {/* 顶部区域 */}
@@ -749,22 +952,46 @@ const BigScreen = ({ visible, onClose }) => {
                   <span>机器人实时位姿</span>
                 </div>
                 <div className="robot-status-panel">
-                  <div className="robot-status-section">
+                  <div className="robot-status-section robot-metric-group">
                     <div className="robot-status-title">笛卡尔坐标</div>
-                    <div className="robot-status-grid">
-                      <div className="robot-status-item">X：{robotSnapshot.position.x ?? '-'}</div>
-                      <div className="robot-status-item">Y：{robotSnapshot.position.y ?? '-'}</div>
-                      <div className="robot-status-item">Z：{robotSnapshot.position.z ?? '-'}</div>
-                      <div className="robot-status-item">A：{robotSnapshot.position.a ?? '-'}</div>
+                    <div className="robot-metric-grid">
+                      <div className="robot-metric-card">
+                        <div className="robot-metric-label">X</div>
+                        <div className="robot-metric-value">{robotSnapshot.position.x ?? '-'}</div>
+                      </div>
+                      <div className="robot-metric-card">
+                        <div className="robot-metric-label">Y</div>
+                        <div className="robot-metric-value">{robotSnapshot.position.y ?? '-'}</div>
+                      </div>
+                      <div className="robot-metric-card">
+                        <div className="robot-metric-label">Z</div>
+                        <div className="robot-metric-value">{robotSnapshot.position.z ?? '-'}</div>
+                      </div>
+                      <div className="robot-metric-card">
+                        <div className="robot-metric-label">A</div>
+                        <div className="robot-metric-value">{robotSnapshot.position.a ?? '-'}</div>
+                      </div>
                     </div>
                   </div>
-                  <div className="robot-status-section">
+                  <div className="robot-status-section robot-metric-group">
                     <div className="robot-status-title">关节角度</div>
-                    <div className="robot-status-grid">
-                      <div className="robot-status-item">A1：{robotSnapshot.joints.a1 ?? '-'}</div>
-                      <div className="robot-status-item">A2：{robotSnapshot.joints.a2 ?? '-'}</div>
-                      <div className="robot-status-item">A3：{robotSnapshot.joints.a3 ?? '-'}</div>
-                      <div className="robot-status-item">A4：{robotSnapshot.joints.a4 ?? '-'}</div>
+                    <div className="robot-metric-grid">
+                      <div className="robot-metric-card">
+                        <div className="robot-metric-label">A1</div>
+                        <div className="robot-metric-value">{robotSnapshot.joints.a1 ?? '-'}</div>
+                      </div>
+                      <div className="robot-metric-card">
+                        <div className="robot-metric-label">A2</div>
+                        <div className="robot-metric-value">{robotSnapshot.joints.a2 ?? '-'}</div>
+                      </div>
+                      <div className="robot-metric-card">
+                        <div className="robot-metric-label">A3</div>
+                        <div className="robot-metric-value">{robotSnapshot.joints.a3 ?? '-'}</div>
+                      </div>
+                      <div className="robot-metric-card">
+                        <div className="robot-metric-label">A4</div>
+                        <div className="robot-metric-value">{robotSnapshot.joints.a4 ?? '-'}</div>
+                      </div>
                     </div>
                   </div>
                   <div className="robot-status-section">
@@ -777,7 +1004,6 @@ const BigScreen = ({ visible, onClose }) => {
                   </div>
                 </div>
               </div>
-              <EventFlow events={packageEvents} packageStats={packageStats} />
             </div>
 
             {/* 中间区域 */}
@@ -799,7 +1025,12 @@ const BigScreen = ({ visible, onClose }) => {
 
             {/* 右侧区域 */}
             <div className="right-panel">
-              <AlertPanel alerts={deviceAlerts} onAlertClick={handleDeviceClick} />
+              <AlertPanel
+                alerts={deviceAlerts}
+                selectedAlertId={selectedAlertId}
+                onAlertSelect={handleAlertSelect}
+                onAlertOpenDetail={handleAlertOpenDetail}
+              />
               <OperationPanel
                 maintenanceRecords={maintenanceRecords}
                 onMaintenance={handleMaintenance}
@@ -807,6 +1038,7 @@ const BigScreen = ({ visible, onClose }) => {
                 selectedDevice={selectedDevice}
                 onAddMaintenance={handleAddMaintenance}
               />
+              <EventFlow events={packageEvents} packageStats={packageStats} />
             </div>
           </div>
         </div>

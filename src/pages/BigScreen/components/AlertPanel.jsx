@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Badge, Tag } from 'antd';
 import { WarningOutlined, ExclamationCircleOutlined, AlertOutlined, BellOutlined } from '@ant-design/icons';
 
-const AlertPanel = ({ alerts, onAlertClick }) => {
+const AlertPanel = ({ alerts, selectedAlertId, onAlertSelect, onAlertOpenDetail }) => {
   const [animatedAlerts, setAnimatedAlerts] = useState([]);
   const seenAlertIdsRef = useRef(new Set());
 
@@ -61,6 +61,7 @@ const AlertPanel = ({ alerts, onAlertClick }) => {
     const classes = ['alert-item'];
     if (alert.level) classes.push(`${alert.level}-alert`);
     if (alert.isNew) classes.push('new-alert');
+    if (selectedAlertId && selectedAlertId === alert.id) classes.push('selected');
     return classes.join(' ');
   };
 
@@ -95,25 +96,49 @@ const AlertPanel = ({ alerts, onAlertClick }) => {
           <div
             key={alert.id}
             className={getAlertClassName(alert)}
-            onClick={() => onAlertClick && onAlertClick(alert)}
+            onClick={() => onAlertSelect && onAlertSelect(alert)}
+            onDoubleClick={() => onAlertOpenDetail && onAlertOpenDetail(alert)}
           >
             <div className="alert-header">
               <div className="alert-device-info">
                 {getAlertIcon(alert.level)}
                 <span className="alert-device-name">{alert.deviceName}</span>
               </div>
-              <Tag color={getAlertTagColor(alert.level)}>
-                {getAlertLevelText(alert.level)}级预警
-              </Tag>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {alert.source ? (
+                  <Tag color={String(alert.source).includes('AI') ? 'purple' : 'blue'}>
+                    {alert.source}
+                  </Tag>
+                ) : null}
+                <Tag color={getAlertTagColor(alert.level)}>
+                  {getAlertLevelText(alert.level)}级预警
+                </Tag>
+              </div>
             </div>
 
             <div className="alert-body">
               <span className="alert-summary">{alert.summary || alert.type}</span>
               <span className="alert-time">{alert.time?.includes(' ') ? alert.time.split(' ')[1] : alert.time}</span>
             </div>
+            {(Number.isFinite(Number(alert.riskScore)) || Number.isFinite(Number(alert.confidencePct))) ? (
+              <div className="alert-meta">
+                <span>风险分：{Number.isFinite(Number(alert.riskScore)) ? Number(alert.riskScore) : '-'}</span>
+                <span>可信度：{Number.isFinite(Number(alert.confidencePct)) ? `${Number(alert.confidencePct)}%` : '-'}</span>
+              </div>
+            ) : null}
+            {alert.forecast ? (
+              <div className="alert-forecast">
+                {alert.forecast}
+              </div>
+            ) : null}
             {alert.rootCause ? (
               <div className="alert-footer">
                 根因：{alert.rootCause}
+              </div>
+            ) : null}
+            {alert.suggestion ? (
+              <div className="alert-footer">
+                建议：{alert.suggestion}
               </div>
             ) : null}
           </div>

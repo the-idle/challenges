@@ -1,10 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 
 // 导入页面组件
-import Dashboard from './pages/Dashboard';
 import DeviceMonitoring from './pages/DeviceMonitoring';
 import HistoricalData from './pages/HistoricalData';
 import MaintenanceSuggestions from './pages/MaintenanceSuggestions';
@@ -13,6 +12,17 @@ import Settings from './pages/Settings';
 import MainLayout from './components/layout/MainLayout';
 import Login from './pages/Login';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import BigScreen from './pages/BigScreen';
+
+const BigScreenEntry = () => {
+  const navigate = useNavigate();
+  return (
+    <BigScreen
+      visible
+      onClose={() => navigate('/device-monitoring', { replace: true })}
+    />
+  );
+};
 
 const App = () => {
   return (
@@ -35,13 +45,21 @@ const App = () => {
               <MainLayout />
             </ProtectedRoute>
           }>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Navigate to="/bigscreen" replace />} />
             <Route path="device-monitoring" element={<DeviceMonitoring />} />
             <Route path="historical-data" element={<HistoricalData />} />
             <Route path="maintenance-suggestions" element={<MaintenanceSuggestions />} />
             <Route path="industrial-qa" element={<IndustrialQA />} />
             <Route path="settings" element={<Settings />} />
           </Route>
+          <Route
+            path="/bigscreen"
+            element={
+              <ProtectedRoute>
+                <BigScreenEntry />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
