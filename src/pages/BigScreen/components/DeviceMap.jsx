@@ -416,7 +416,7 @@ const DeviceMap = () => {
           <div className="device-map-loading device-map-awaiting">
             <div className="device-map-awaiting-pulse" />
             <div className="device-map-awaiting-text">模型待命中，按 5 显示模型</div>
-            <div className="device-map-awaiting-subtext">快捷键：0播一次 1循环 2暂停 3红光开 4红光关 6 AI预警</div>
+            <div className="device-map-awaiting-subtext">快捷键：0播一次 1循环 2暂停 3红光开 4红光关 6 AI预警 7 常规预警</div>
           </div>
         ) : null}
         {modelRequested && isModelLoading ? (

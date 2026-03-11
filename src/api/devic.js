@@ -7,12 +7,14 @@ const DEFAULT_MOCK_FILE = 'e:\\demo\\lsfszls\\材料\\modbus_watch_history_2026-
 const TARGET_DEVICE_CODE = import.meta.env.VITE_DEVICE_CODE || DEFAULT_DEVICE_CODE;
 const OFFLINE_MOCK = (import.meta.env.VITE_OFFLINE_MOCK ?? 'false') === 'true';
 const OFFLINE_MOCK_FILE = import.meta.env.VITE_OFFLINE_MOCK_FILE || DEFAULT_MOCK_FILE;
+const DEFAULT_ORDER_STATS_ENDPOINT = 'http://192.168.2.199:7000/api/stats/order-quantity';
+
 const ORDER_STATS_ENDPOINT = (() => {
   const value = import.meta.env.VITE_ORDER_STATS_URL;
   if (value && String(value).trim()) {
     return String(value).trim();
   }
-  return '';
+  return DEFAULT_ORDER_STATS_ENDPOINT;
 })();
 
 const toNumber = (value) => {
@@ -153,7 +155,8 @@ const loadLatestSnapshot = async (deviceCode) => {
   const response = await request({
     url: `/device/${deviceCode}/latest`,
     method: 'get',
-    params: buildLatestParams()
+    params: buildLatestParams(),
+    silentError: true
   });
   let snapshot = unwrapPayload(response) || {};
   const registers = snapshot?.registers || {};
@@ -161,7 +164,8 @@ const loadLatestSnapshot = async (deviceCode) => {
     const liveResponse = await request({
       url: `/device/${deviceCode}/latest`,
       method: 'get',
-      params: buildLatestParams(false)
+      params: buildLatestParams(false),
+      silentError: true
     });
     snapshot = unwrapPayload(liveResponse) || snapshot;
   }
@@ -286,31 +290,36 @@ export const getOrderQuantityStats = async () => {
   if (!ORDER_STATS_ENDPOINT) {
     return {
       totalOrders: 0,
-      totalItemsSold: 0,
+      totalOrderedQuantity: 0,
+      totalPickedQuantity: 0,
       pendingOrders: 0,
-      pendingItemsQuantity: 0,
+      pendingQuantity: 0,
       message: ''
     };
   }
   try {
     const response = await request({
       url: ORDER_STATS_ENDPOINT,
-      method: 'get'
+      method: 'get',
+      skipBusinessCheck: true,
+      silentError: true
     });
     const payload = unwrapPayload(response) || {};
     return {
       totalOrders: toSafeInt(payload.total_orders),
-      totalItemsSold: toSafeInt(payload.total_items_sold),
+      totalOrderedQuantity: toSafeInt(payload.total_ordered_quantity),
+      totalPickedQuantity: toSafeInt(payload.total_picked_quantity),
       pendingOrders: toSafeInt(payload.pending_orders),
-      pendingItemsQuantity: toSafeInt(payload.pending_items_quantity),
+      pendingQuantity: toSafeInt(payload.pending_quantity),
       message: payload.message || ''
     };
   } catch {
     return {
       totalOrders: 0,
-      totalItemsSold: 0,
+      totalOrderedQuantity: 0,
+      totalPickedQuantity: 0,
       pendingOrders: 0,
-      pendingItemsQuantity: 0,
+      pendingQuantity: 0,
       message: ''
     };
   }

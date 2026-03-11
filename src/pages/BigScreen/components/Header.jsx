@@ -1,8 +1,42 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { Switch } from 'antd';
 
 const Header = ({ title, currentTime, apiStatus, wsStatus, wsLatencyMs, isDarkMode, onThemeChange }) => {
+  const [stableWsStatus, setStableWsStatus] = useState(wsStatus);
+  const wsStatusTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (wsStatus === 'connected') {
+      if (wsStatusTimerRef.current) {
+        clearTimeout(wsStatusTimerRef.current);
+        wsStatusTimerRef.current = null;
+      }
+      setStableWsStatus('connected');
+      return;
+    }
+    if (wsStatusTimerRef.current) {
+      clearTimeout(wsStatusTimerRef.current);
+    }
+    wsStatusTimerRef.current = setTimeout(() => {
+      setStableWsStatus('disconnected');
+      wsStatusTimerRef.current = null;
+    }, 1200);
+    return () => {
+      if (wsStatusTimerRef.current) {
+        clearTimeout(wsStatusTimerRef.current);
+        wsStatusTimerRef.current = null;
+      }
+    };
+  }, [wsStatus]);
+
+  const wsLatencyText = useMemo(() => {
+    if (wsLatencyMs === null || wsLatencyMs === undefined || !Number.isFinite(Number(wsLatencyMs))) {
+      return '--ms';
+    }
+    return `${Math.max(0, Math.round(Number(wsLatencyMs)))}ms`;
+  }, [wsLatencyMs]);
+
   return (
     <div className="big-screen-header">
       <div className="header-time">
@@ -33,12 +67,12 @@ const Header = ({ title, currentTime, apiStatus, wsStatus, wsLatencyMs, isDarkMo
         </div>
         <div className="ws-status">
           <span className="header-status-text">WS:</span>
-          {wsStatus === 'connected' ? (
+          {stableWsStatus === 'connected' ? (
             <CheckCircleOutlined style={{ color: '#52C41A', fontSize: '18px', marginLeft: '5px' }} />
           ) : (
             <CloseCircleOutlined style={{ color: '#FF4D4F', fontSize: '18px', marginLeft: '5px' }} />
           )}
-          <span className="ws-latency">{wsLatencyMs !== null ? `${wsLatencyMs}ms` : '-'}</span>
+          <span className="ws-latency">{wsLatencyText}</span>
         </div>
       </div>
     </div>
