@@ -35,15 +35,15 @@ const POLL_INTERVAL_PAGE_HIDDEN_MS = 15000;
 const MAX_MANUAL_ALERTS = 20;
 const HOTKEY_ALERT_TEMPLATES = {
   '6': {
-    level: 'high',
+    level: 'medium',
     type: 'AI流程预警',
-    summary: 'AI算法预警：分拣臂振荡趋势上升',
+    summary: 'AI算法预警：药包隔板传送带数据异常',
   
-    source: 'AI流程演练',
-    confidencePct: 93,
-    riskScore: 88,
+    // source: 'AI流程演练',
+    confidencePct: 766,
+    riskScore: 48,
     forecast: '预测窗口：30s',
-    suggestion: '建议降速并执行点检流程'
+    // suggestion: '建议降速并执行点检流程'
   },
   '7': {
     level: 'low',
@@ -98,6 +98,10 @@ const resolveWsEndpoint = () => {
     return String(envWsUrl).trim().replace(/\/$/, '');
   }
   const base = resolveApiBase().replace(/\/$/, '');
+  if (import.meta.env.DEV && base.startsWith('/')) {
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+    return `${protocol}//${window.location.hostname}:8080${base}/ws`;
+  }
   return `${base}/ws`;
 };
 
@@ -402,9 +406,10 @@ const hasValidRegisters = (registers) =>
 
 const defaultPackageStats = {
   totalOrders: 0,
-  totalItemsSold: 0,
+  totalOrderedQuantity: 0,
+  totalPickedQuantity: 0,
   pendingOrders: 0,
-  pendingItemsQuantity: 0
+  pendingQuantity: 0
 };
 
 const BigScreen = ({ visible, onClose }) => {
@@ -987,7 +992,7 @@ const BigScreen = ({ visible, onClose }) => {
           ) : null}
           {/* 顶部区域 */}
           <Header
-            title="AI+工业机器人软袋小包药品柔性智能监控系统"
+            title="AI+工业机器人软袋小包药品柔性智能运维系统"
             currentTime={currentTime}
             apiStatus={apiStatus}
             wsStatus={wsStatus}

@@ -730,6 +730,11 @@
   margin-left: 6px;
   color: var(--text-color-secondary);
   font-size: 12px;
+  display: inline-flex;
+  justify-content: flex-end;
+  min-width: 52px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 内容区域样式 */

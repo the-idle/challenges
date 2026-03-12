@@ -35,6 +35,9 @@ request.interceptors.request.use(
 request.interceptors.response.use(
     response => {
         const res = response.data;
+        if (response.config?.skipBusinessCheck) {
+            return res;
+        }
 
         // 检查响应数据中的 code
         if (res.code === 401) {
