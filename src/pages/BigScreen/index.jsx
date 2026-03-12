@@ -34,7 +34,7 @@ const POLL_INTERVAL_WS_DISCONNECTED_MS = 1000;
 const POLL_INTERVAL_PAGE_HIDDEN_MS = 15000;
 const MAX_MANUAL_ALERTS = 20;
 const HOTKEY_ALERT_TEMPLATES = {
-  '6': {
+  '4': {
     level: 'medium',
     type: 'AI流程预警',
     summary: 'AI算法预警：药包隔板传送带数据异常',
@@ -44,17 +44,6 @@ const HOTKEY_ALERT_TEMPLATES = {
     riskScore: 48,
     forecast: '预测窗口：30s',
     // suggestion: '建议降速并执行点检流程'
-  },
-  '7': {
-    level: 'low',
-    type: '常规流程预警',
-    summary: '常规预警：输送节拍轻微波动',
-
-    source: '常规流程演练',
-    confidencePct: 82,
-    riskScore: 47,
-    forecast: '预测窗口：10m',
-    suggestion: '建议持续观察并在下一班次复核设备状态'
   }
 };
 
@@ -805,16 +794,30 @@ const BigScreen = ({ visible, onClose }) => {
     window.addEventListener('focus', handlePageFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     handlePageFocus();
-    const handleManualAlertHotkey = (event) => {
-      const template = HOTKEY_ALERT_TEMPLATES[event.key];
+    const toggleManualAlertFromKey = (key) => {
+      if (key !== '4') {
+        return;
+      }
+      const template = HOTKEY_ALERT_TEMPLATES[key];
       if (!template) {
+        return;
+      }
+      const manualAlertId = `manual-hotkey-${key}`;
+      const existingIndex = manualAlertsRef.current.findIndex((item) => item?.id === manualAlertId);
+      if (existingIndex >= 0) {
+        manualAlertsRef.current = manualAlertsRef.current.filter((item) => item?.id !== manualAlertId);
+        setDeviceAlerts((prev) => {
+          const realtimeAlerts = prev.filter((item) => !item?.isManualHotkey);
+          return mergeAlerts(realtimeAlerts, manualAlertsRef.current);
+        });
+        setSelectedAlertId((prev) => (prev === manualAlertId ? null : prev));
         return;
       }
       const nowTs = Date.now();
       const current = primaryDeviceRef.current || {};
       const manualAlert = {
         ...template,
-        id: `manual-hotkey-${event.key}-${nowTs}`,
+        id: manualAlertId,
         deviceId: current.deviceId || current.id || 'PLC_H5U_01',
         deviceName: current.deviceName || current.name || '分拣PLC-H5U-01',
         time: formatTime(new Date(nowTs)),
@@ -837,9 +840,17 @@ const BigScreen = ({ visible, onClose }) => {
         diagnosisTime: manualAlert.time
       });
     };
+    const handleManualAlertHotkey = (event) => {
+      toggleManualAlertFromKey(event.key);
+    };
+    const handleManualAlertToggle = (event) => {
+      toggleManualAlertFromKey(event?.detail?.key);
+    };
     window.addEventListener('keydown', handleManualAlertHotkey);
+    window.addEventListener('hotkey-alert-toggle', handleManualAlertToggle);
     return () => {
       window.removeEventListener('keydown', handleManualAlertHotkey);
+      window.removeEventListener('hotkey-alert-toggle', handleManualAlertToggle);
       window.removeEventListener('focus', handlePageFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CloseCircleOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { Switch } from 'antd';
 
 const Header = ({ title, currentTime, apiStatus, wsStatus, wsLatencyMs, isDarkMode, onThemeChange }) => {
@@ -44,6 +44,7 @@ const Header = ({ title, currentTime, apiStatus, wsStatus, wsLatencyMs, isDarkMo
       </div>
 
       <div className="header-title">
+        <SafetyCertificateOutlined style={{ fontSize: '24px', color: 'var(--primary-color)' }} />
         <h1>{title}</h1>
       </div>
 
