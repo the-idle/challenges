@@ -286,11 +286,14 @@ const DeviceMap = () => {
     alarmLight.visible = false;
     scene.add(alarmLight);
     alarmLightRef.current = alarmLight;
-
     let model = null;
     const loader = new GLTFLoader();
     setIsModelLoading(true);
     setIsModelLoadFailed(false);
+    // 关闭“模型待命”准备动画
+    setModelRequested(false);
+    showModelRef.current = false;
+    setShowModel(false);
     loader.load(
       '/model/end.glb',
       (gltf) => {
@@ -574,7 +577,7 @@ const DeviceMap = () => {
         {!modelRequested ? (
           <div className="device-map-loading device-map-awaiting">
             <div className="device-map-awaiting-pulse" />
-            <div className="device-map-awaiting-text">模型待命中，按 5 显示模型</div>
+            <div className="device-map-awaiting-text"></div>
           </div>
         ) : null}
         {modelRequested && isModelLoading ? (

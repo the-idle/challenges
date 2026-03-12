@@ -40,7 +40,7 @@ const HOTKEY_ALERT_TEMPLATES = {
     summary: 'AI算法预警：药包隔板传送带数据异常',
   
     // source: 'AI流程演练',
-    confidencePct: 766,
+    confidencePct: 76,
     riskScore: 48,
     forecast: '预测窗口：30s',
     // suggestion: '建议降速并执行点检流程'
