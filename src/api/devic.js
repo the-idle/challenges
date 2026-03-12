@@ -153,7 +153,8 @@ const loadLatestSnapshot = async (deviceCode) => {
   const response = await request({
     url: `/device/${deviceCode}/latest`,
     method: 'get',
-    params: buildLatestParams()
+    params: buildLatestParams(),
+    silentError: true
   });
   let snapshot = unwrapPayload(response) || {};
   const registers = snapshot?.registers || {};
@@ -161,7 +162,8 @@ const loadLatestSnapshot = async (deviceCode) => {
     const liveResponse = await request({
       url: `/device/${deviceCode}/latest`,
       method: 'get',
-      params: buildLatestParams(false)
+      params: buildLatestParams(false),
+      silentError: true
     });
     snapshot = unwrapPayload(liveResponse) || snapshot;
   }

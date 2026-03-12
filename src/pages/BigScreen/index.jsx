@@ -33,16 +33,29 @@ const POLL_INTERVAL_WS_FRESH_MS = 2500;
 const POLL_INTERVAL_WS_DISCONNECTED_MS = 1000;
 const POLL_INTERVAL_PAGE_HIDDEN_MS = 15000;
 const MAX_MANUAL_ALERTS = 20;
-const HOTKEY6_ALERT_TEMPLATE = {
-  level: 'high',
-  type: 'AI流程预警',
-  summary: 'AI预警：分拣臂振荡趋势上升',
-  rootCause: '按键6触发流程演练，告警内容可在 HOTKEY6_ALERT_TEMPLATE 中自定义',
-  source: 'AI流程演练',
-  confidencePct: 93,
-  riskScore: 88,
-  forecast: '预测窗口：30s',
-  suggestion: '建议降速并执行点检流程'
+const HOTKEY_ALERT_TEMPLATES = {
+  '6': {
+    level: 'high',
+    type: 'AI流程预警',
+    summary: 'AI算法预警：分拣臂振荡趋势上升',
+  
+    source: 'AI流程演练',
+    confidencePct: 93,
+    riskScore: 88,
+    forecast: '预测窗口：30s',
+    suggestion: '建议降速并执行点检流程'
+  },
+  '7': {
+    level: 'low',
+    type: '常规流程预警',
+    summary: '常规预警：输送节拍轻微波动',
+
+    source: '常规流程演练',
+    confidencePct: 82,
+    riskScore: 47,
+    forecast: '预测窗口：10m',
+    suggestion: '建议持续观察并在下一班次复核设备状态'
+  }
 };
 
 const toNumber = (value, fallback = 0) => {
@@ -62,6 +75,14 @@ const toBoolean = (value) => {
 
 const formatTime = (date) =>
   date.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+const normalizeTimestamp = (value, fallback = Date.now()) => {
+  const raw = Number(value);
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return fallback;
+  }
+  return raw < 1_000_000_000_000 ? raw * 1000 : raw;
+};
 
 const resolveApiBase = () => {
   const envBaseURL = import.meta.env.VITE_API_BASE_URL;
@@ -89,6 +110,16 @@ const readBoolean = (registers, key) => {
   const value = registers?.[key];
   if (value === undefined) return null;
   return toBoolean(value);
+};
+
+const readBooleanFromAliases = (registers, keys) => {
+  for (const key of keys) {
+    const value = readBoolean(registers, key);
+    if (value !== null) {
+      return value;
+    }
+  }
+  return null;
 };
 
 const integerRegisterKeys = new Set([
@@ -143,46 +174,52 @@ const mergeStableRegisters = (previous = {}, incoming = {}) => {
 };
 
 const buildKeyMetrics = (registers) => {
-  const runIndicator = readBoolean(registers, 'y3_run_indicator');
-  const buzzer = readBoolean(registers, 'y2_buzzer');
-  const conveyor = readBoolean(registers, 'm5_conveyor_in_action');
-  const lifter = readBoolean(registers, 'm4_lifter_in_action');
+  const runIndicator = readBooleanFromAliases(registers, ['x2_emergency_stop', 'x2', 'm33_run_indicator', 'y3_run_indicator']) ?? false;
+  const servoAutoSpeed = readNumber(registers, 'd1062_servo_auto_speed') ?? 0;
+  const servoStepDistance = readNumber(registers, 'd1060_servo_step_distance') ?? 0;
+  const liftBeltTime = readNumber(registers, 'd1010_lift_belt_time') ?? 0;
+  const sortingBeltTime = readNumber(registers, 'd1012_sorting_belt_time') ?? 0;
   return [
     {
-      id: 'metric-y3-run-indicator',
-      title: 'Y3运行指示灯',
+      id: 'metric-run-indicator',
+      title: '运行指示灯',
       value: runIndicator ? 1 : 0,
       unit: '',
       threshold: 1,
-      status: runIndicator ? 'normal' : 'error',
+      status: runIndicator ? 'normal' : 'warning',
       displayValue: runIndicator ? '运行' : '停止'
     },
     {
-      id: 'metric-y2-buzzer',
-      title: 'Y2蜂鸣器',
-      value: buzzer ? 1 : 0,
+      id: 'metric-d1062-servo-auto-speed',
+      title: 'D1062伺服自动速度',
+      value: servoAutoSpeed,
       unit: '',
-      threshold: 1,
-      status: buzzer ? 'warning' : 'normal',
-      displayValue: buzzer ? '启动' : '停止'
+      threshold: 800,
+      status: servoAutoSpeed > 800 ? 'warning' : 'normal'
     },
     {
-      id: 'metric-m5-conveyor',
-      title: 'M5输送机动作中',
-      value: conveyor ? 1 : 0,
+      id: 'metric-d1060-servo-step-distance',
+      title: 'D1060伺服一格距离',
+      value: servoStepDistance,
       unit: '',
-      threshold: 1,
-      status: conveyor ? 'normal' : 'error',
-      displayValue: conveyor ? '运行' : '停止'
+      threshold: 40,
+      status: servoStepDistance > 40 ? 'warning' : 'normal'
     },
     {
-      id: 'metric-m4-lifter',
-      title: 'M4提升机动作中',
-      value: lifter ? 1 : 0,
+      id: 'metric-d1010-lift-belt-time',
+      title: 'D1010提升带时间',
+      value: liftBeltTime,
       unit: '',
-      threshold: 1,
-      status: lifter ? 'normal' : 'error',
-      displayValue: lifter ? '运行' : '停止'
+      threshold: 120,
+      status: liftBeltTime > 120 ? 'warning' : 'normal'
+    },
+    {
+      id: 'metric-d1012-sorting-belt-time',
+      title: 'D1012分拣带时间',
+      value: sortingBeltTime,
+      unit: '',
+      threshold: 120,
+      status: sortingBeltTime > 120 ? 'warning' : 'normal'
     }
   ];
 };
@@ -241,19 +278,34 @@ const buildDeviceAlerts = (registers, device) => {
       createdAt: nowTs
     });
   }
-  if (readBoolean(registers, 'x2_emergency_stop')) {
+  const runIndicator = readBooleanFromAliases(registers, ['x2_emergency_stop', 'x2', 'm33_run_indicator', 'y3_run_indicator']);
+  if (runIndicator === false) {
     alerts.push({
       id: 'alert-x2',
       deviceId: device?.deviceId,
       deviceName: device?.deviceName,
-      level: 'high',
-      type: '急停触发',
-      summary: 'X2急停',
+      level: 'medium',
+      type: '运行指示灯异常',
+      summary: '运行指示灯未亮',
       time: now,
       source: '规则引擎',
       createdAt: nowTs
     });
   }
+  // const emergencyStop = readBooleanFromAliases(registers, ['y2_buzzer', 'y2']);
+  // if (emergencyStop) {
+  //   alerts.push({
+  //     id: 'alert-y2',
+  //     deviceId: device?.deviceId,
+  //     deviceName: device?.deviceName,
+  //     level: 'high',
+  //     type: '急停触发',
+  //     summary: 'Y2急停',
+  //     time: now,
+  //     source: '规则引擎',
+  //     createdAt: nowTs
+  //   });
+  // }
   if (readBoolean(registers, 'm21_total_emergency_stop')) {
     alerts.push({
       id: 'alert-m21',
@@ -267,20 +319,20 @@ const buildDeviceAlerts = (registers, device) => {
       createdAt: nowTs
     });
   }
-  const safePosition = readBoolean(registers, 'm510_safe_position');
-  if (safePosition === false) {
-    alerts.push({
-      id: 'alert-m510',
-      deviceId: device?.deviceId,
-      deviceName: device?.deviceName,
-      level: 'medium',
-      type: '安全位异常',
-      summary: 'M510安全位异常',
-      time: now,
-      source: '规则引擎',
-      createdAt: nowTs
-    });
-  }
+  // const safePosition = readBoolean(registers, 'm510_safe_position');
+  // if (safePosition === false) {
+  //   alerts.push({
+  //     id: 'alert-m510',
+  //     deviceId: device?.deviceId,
+  //     deviceName: device?.deviceName,
+  //     level: 'medium',
+  //     type: '安全位异常',
+  //     summary: 'M510安全位异常',
+  //     time: now,
+  //     source: '规则引擎',
+  //     createdAt: nowTs
+  //   });
+  // }
   return alerts;
 };
 
@@ -385,6 +437,7 @@ const BigScreen = ({ visible, onClose }) => {
   const wsReconnectAttemptRef = useRef(0);
   const wsLastRefreshRef = useRef(0);
   const wsLastMessageAtRef = useRef(0);
+  const wsLastAppliedAtRef = useRef(0);
   const latestSnapshotTsRef = useRef(0);
   const statsLastFetchedAtRef = useRef(0);
   const latestRegistersRef = useRef({});
@@ -398,8 +451,7 @@ const BigScreen = ({ visible, onClose }) => {
     if (!hasValidRegisters(registers)) {
       return false;
     }
-    const snapshotTsRaw = Number(baseDevice?.snapshotTimestamp ?? Date.now());
-    const snapshotTs = Number.isFinite(snapshotTsRaw) && snapshotTsRaw > 0 ? snapshotTsRaw : Date.now();
+    const snapshotTs = normalizeTimestamp(baseDevice?.snapshotTimestamp, Date.now());
     if (latestSnapshotTsRef.current > 0 && snapshotTs + 1000 < latestSnapshotTsRef.current) {
       return false;
     }
@@ -505,25 +557,26 @@ const BigScreen = ({ visible, onClose }) => {
     }
     const currentDevice = primaryDeviceRef.current || {};
     const deviceId = payload?.deviceCode || currentDevice.deviceId || deviceCodeRef.current;
+    const snapshotTimestamp = normalizeTimestamp(payload?.pushTimestamp ?? payload?.timestamp, Date.now());
     const nextDevice = {
       ...currentDevice,
       deviceId,
       deviceName: currentDevice.deviceName || '分拣PLC-H5U-01',
       registers: mergedRegisters,
-      snapshotTimestamp: Number(payload?.pushTimestamp ?? payload?.timestamp ?? Date.now())
+      snapshotTimestamp
     };
     return updateFromSnapshot(nextDevice);
   }, [buildRegistersFromRealtimePayload, updateFromSnapshot]);
 
-  const refreshLatestSnapshot = useCallback(async () => {
+  const refreshLatestSnapshot = useCallback(async (forcePullDevice = false) => {
     if (realtimePollingRef.current) {
       return;
     }
     realtimePollingRef.current = true;
     try {
       const now = Date.now();
-      const wsHealthy = wsStatus === 'connected' && now - wsLastMessageAtRef.current < WS_FRESH_WINDOW_MS;
-      const shouldPullDevice = !wsHealthy || !hasRealtimeData;
+      const wsHealthy = wsStatus === 'connected' && now - wsLastAppliedAtRef.current < WS_FRESH_WINDOW_MS;
+      const shouldPullDevice = forcePullDevice || !wsHealthy || !hasRealtimeData;
       if (now - statsLastFetchedAtRef.current >= 5000) {
         const statsResult = await Promise.allSettled([getOrderQuantityStats()]);
         if (statsResult[0]?.status === 'fulfilled') {
@@ -551,13 +604,13 @@ const BigScreen = ({ visible, onClose }) => {
     }
   }, [hasRealtimeData, updateFromSnapshot, wsStatus]);
 
-  const scheduleRefreshFromWs = useCallback(() => {
+  const scheduleRefreshFromWs = useCallback((forcePullDevice = false) => {
     const now = Date.now();
     if (now - wsLastRefreshRef.current < 500) {
       return;
     }
     wsLastRefreshRef.current = now;
-    refreshLatestSnapshot();
+    refreshLatestSnapshot(forcePullDevice);
   }, [refreshLatestSnapshot]);
 
   const connectWebSocket = useCallback(() => {
@@ -596,32 +649,38 @@ const BigScreen = ({ visible, onClose }) => {
           }
           const applied = applyRealtimePayload(payload);
           wsLastMessageAtRef.current = Date.now();
+          if (applied) {
+            wsLastAppliedAtRef.current = Date.now();
+          }
           if (!applied) {
-            scheduleRefreshFromWs();
+            scheduleRefreshFromWs(true);
           }
         } catch {
           setWsLatencyMs(null);
-          scheduleRefreshFromWs();
+          scheduleRefreshFromWs(true);
         }
       });
-      scheduleRefreshFromWs();
+      scheduleRefreshFromWs(true);
     };
 
     client.onStompError = () => {
       setWsStatus('disconnected');
       setWsLatencyMs(null);
       wsLastMessageAtRef.current = 0;
+      wsLastAppliedAtRef.current = 0;
     };
 
     client.onWebSocketError = () => {
       setWsStatus('disconnected');
       setWsLatencyMs(null);
+      wsLastAppliedAtRef.current = 0;
     };
 
     client.onWebSocketClose = () => {
       setWsStatus('disconnected');
       setWsLatencyMs(null);
       wsLastMessageAtRef.current = 0;
+      wsLastAppliedAtRef.current = 0;
       if (wsRealtimeSubscriptionRef.current) {
         wsRealtimeSubscriptionRef.current.unsubscribe();
         wsRealtimeSubscriptionRef.current = null;
@@ -680,7 +739,7 @@ const BigScreen = ({ visible, onClose }) => {
       }
       await refreshLatestSnapshot();
       if (!disposed) {
-        const wsFresh = wsStatus === 'connected' && Date.now() - wsLastMessageAtRef.current < WS_FRESH_WINDOW_MS;
+        const wsFresh = wsStatus === 'connected' && Date.now() - wsLastAppliedAtRef.current < WS_FRESH_WINDOW_MS;
         const nextDelay = !isPageVisible
           ? POLL_INTERVAL_PAGE_HIDDEN_MS
           : (wsFresh ? POLL_INTERVAL_WS_FRESH_MS : POLL_INTERVAL_WS_DISCONNECTED_MS);
@@ -742,22 +801,24 @@ const BigScreen = ({ visible, onClose }) => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     handlePageFocus();
     const handleManualAlertHotkey = (event) => {
-      if (event.key !== '6') {
+      const template = HOTKEY_ALERT_TEMPLATES[event.key];
+      if (!template) {
         return;
       }
       const nowTs = Date.now();
       const current = primaryDeviceRef.current || {};
       const manualAlert = {
-        ...HOTKEY6_ALERT_TEMPLATE,
-        id: `manual-ai-${nowTs}`,
+        ...template,
+        id: `manual-hotkey-${event.key}-${nowTs}`,
         deviceId: current.deviceId || current.id || 'PLC_H5U_01',
         deviceName: current.deviceName || current.name || '分拣PLC-H5U-01',
         time: formatTime(new Date(nowTs)),
-        createdAt: nowTs
+        createdAt: nowTs,
+        isManualHotkey: true
       };
       manualAlertsRef.current = [manualAlert, ...manualAlertsRef.current].slice(0, MAX_MANUAL_ALERTS);
       setDeviceAlerts((prev) => {
-        const realtimeAlerts = prev.filter((item) => item?.source !== HOTKEY6_ALERT_TEMPLATE.source);
+        const realtimeAlerts = prev.filter((item) => !item?.isManualHotkey);
         return mergeAlerts(realtimeAlerts, manualAlertsRef.current);
       });
       setSelectedAlertId(manualAlert.id);
@@ -926,7 +987,7 @@ const BigScreen = ({ visible, onClose }) => {
           ) : null}
           {/* 顶部区域 */}
           <Header
-            title="工业机器人软袋小包药品柔性智能监控系统"
+            title="AI+工业机器人软袋小包药品柔性智能监控系统"
             currentTime={currentTime}
             apiStatus={apiStatus}
             wsStatus={wsStatus}

@@ -16,7 +16,7 @@ export const mockDeviceLocations = [
 
 // 模拟关键指标数据
 export const mockKeyMetrics = [
-  { id: 'metric-run-indicator', title: 'Y3运行指示灯', value: 0, unit: '', threshold: 1, status: 'error', displayValue: '停止' },
+  { id: 'metric-run-indicator', title: 'M33运行指示灯', value: 0, unit: '', threshold: 1, status: 'error', displayValue: '停止' },
   { id: 'metric-servo-speed', title: 'D1062伺服自动速度', value: 0, unit: '', threshold: 1, status: 'normal' },
   { id: 'metric-servo-distance', title: 'D1060伺服一格距离', value: 0, unit: '', threshold: 1, status: 'normal' },
   { id: 'metric-lift-time', title: 'D1010提升带时间', value: 0, unit: '', threshold: 1, status: 'normal' },
@@ -94,4 +94,3 @@ export const mockEventFlowData = [
   { time: '19:00:45', deviceId: '设备C-001', content: '紧急停机', type: 'error' },
   { time: '18:59:20', deviceId: '设备A-003', content: '运行正常', type: 'success' },
 ];
-

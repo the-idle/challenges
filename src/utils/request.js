@@ -11,7 +11,7 @@ const resolveBaseURL = () => {
 
 const request = axios.create({
     baseURL: resolveBaseURL(),
-    timeout: 5000
+    timeout: 10000
 });
 
 // 请求拦截器
@@ -56,7 +56,9 @@ request.interceptors.response.use(
         // 处理其他业务错误
         if (res.code !== 0 && res.code !== 200) {
             console.error('业务错误:', res.msg || 'Error');
-            message.error(res.msg || 'Error');
+            if (!response.config?.silentError) {
+                message.error(res.msg || 'Error');
+            }
             return Promise.reject(new Error(res.msg || 'Error'));
         }
 
@@ -86,8 +88,9 @@ request.interceptors.response.use(
                 return Promise.reject(error);
             }
         }
-
-        message.error(error.message || '服务器错误');
+        if (!error.config?.silentError) {
+            message.error(error.message || '服务器错误');
+        }
         return Promise.reject(error);
     }
 );
